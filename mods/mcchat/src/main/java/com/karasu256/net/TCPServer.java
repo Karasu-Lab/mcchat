@@ -19,10 +19,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class TCPServer implements AutoCloseable {
-  private static final int SEND_QUEUE_LIMIT = 512;
-  private static final long RECONNECT_MIN_MILLIS = 1_000;
-  private static final long RECONNECT_MAX_MILLIS = 30_000;
-
   private final Supplier<CapturedPacket> snapshot;
   private final Consumer<CapturedPacket> handler;
   private final Set<Connection> clients = ConcurrentHashMap.newKeySet();
@@ -101,14 +97,14 @@ public final class TCPServer implements AutoCloseable {
   }
 
   private void upstreamLoop(String host, int port, Consumer<Boolean> onState) {
-    long backoff = RECONNECT_MIN_MILLIS;
+    long backoff = 1_000;
     Thread self = Thread.currentThread();
     while (!closed && upstreamThread == self) {
       try {
         Socket socket = new Socket(host, port);
         Connection connection = new Connection(socket, upstreams);
         upstreams.add(connection);
-        backoff = RECONNECT_MIN_MILLIS;
+        backoff = 1_000;
         onState.accept(true);
         connection.readLoop();
       } catch (IOException e) {
@@ -123,7 +119,7 @@ public final class TCPServer implements AutoCloseable {
       } catch (InterruptedException e) {
         break;
       }
-      backoff = Math.min(backoff * 2, RECONNECT_MAX_MILLIS);
+      backoff = Math.min(backoff * 2, 30_000);
     }
   }
 
@@ -144,7 +140,7 @@ public final class TCPServer implements AutoCloseable {
   private final class Connection {
     private final Socket socket;
     private final Set<Connection> owner;
-    private final BlockingQueue<String> outbox = new LinkedBlockingQueue<>(SEND_QUEUE_LIMIT);
+    private final BlockingQueue<String> outbox = new LinkedBlockingQueue<>(512);
 
     Connection(Socket socket, Set<Connection> owner) {
       this.socket = socket;

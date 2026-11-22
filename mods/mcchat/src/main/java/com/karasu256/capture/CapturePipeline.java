@@ -8,9 +8,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class CapturePipeline implements AutoCloseable {
-  private static final int QUEUE_CAPACITY = 1024;
-
-  private final BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+  private final BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(1024);
   private final List<CaptureSink> sinks = new CopyOnWriteArrayList<>();
   private final int historySize;
   private final Thread worker;

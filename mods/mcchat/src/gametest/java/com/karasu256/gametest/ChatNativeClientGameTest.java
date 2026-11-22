@@ -23,8 +23,6 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerCon
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
 
 public class ChatNativeClientGameTest implements FabricClientGameTest {
-  private static final int WAIT_TICKS = 600;
-
   @Override
   public void runTest(ClientGameTestContext context) {
     try (TcpCapture capture = new TcpCapture(ChatNative.config().clientPort)) {
@@ -190,7 +188,7 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
     }
 
     CapturedPacket await(ClientGameTestContext context, Predicate<CapturedPacket> predicate) {
-      context.waitFor(client -> packets.stream().anyMatch(predicate), WAIT_TICKS);
+      context.waitFor(client -> packets.stream().anyMatch(predicate), 600);
       return packets.stream().filter(predicate).findFirst().orElseThrow();
     }
 
