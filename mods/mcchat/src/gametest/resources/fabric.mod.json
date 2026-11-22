@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "chatnative-test",
+	"version": "1.0.0",
+	"name": "ChatNative tests",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"com.karasu256.gametest.ChatNativeClientGameTest"
+		]
+	},
+	"depends": {
+		"chatnative": "*"
+	}
+}

@@ -3,13 +3,13 @@
 	"id": "chatnative",
 	"version": "${version}",
 	"name": "ChatNative",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Captures chat, command and player events and syncs them to external apps over TCP.",
 	"authors": [
-		"Me!"
+		"Karasu-Lab"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/Karasu-Lab/mcchat",
+		"sources": "https://github.com/Karasu-Lab/mcchat"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/chatnative/icon.png",
