@@ -12,3 +12,5 @@ pluginManagement {
 rootProject.name = 'mcchat-workspace'
 
 include 'mods:mcchat'
+
+includeBuild 'apps'
