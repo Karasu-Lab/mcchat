@@ -8,92 +8,114 @@ concurrency:
 
 jobs:
   prepare:
-    if: "${{ !contains(toJSON(github.event.commits.*.message), 'release: ') }}"
     runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mcchat
+            path: mods/mcchat
+            version-file: mods/mcchat/gradle.properties
+            fallback-version: 1.0.1
+          - name: mcchat-native
+            path: apps/MCChatNative
+            version-file: apps/MCChatNative/app/gradle.properties
+            fallback-version: 1.1.0
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN || github.token }}
-      - name: update versions and changelog
-        id: prepare
-        run: python3 .github/scripts/prepare_release.py
-      - name: push release branch
-        if: steps.prepare.outputs.released == 'true'
-        env:
-          MESSAGE: ${{ steps.prepare.outputs.message }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b release/next
-          git add CHANGELOG.md mods/mcchat/gradle.properties apps/MCChatNative/app/build.gradle.kts
-          git commit -m "$MESSAGE"
-          git push --force origin release/next
+      - name: update version and changelog
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v6
+        with:
+          github-token: ${{ secrets.RELEASE_TOKEN || github.token }}
+          preset: conventionalcommits
+          git-path: ${{ matrix.path }}
+          tag-prefix: ${{ matrix.name }}-v
+          fallback-version: ${{ matrix.fallback-version }}
+          version-file: ${{ matrix.version-file }}
+          input-file: CHANGELOG.md
+          output-file: CHANGELOG.md
+          skip-commit: 'true'
+          skip-tag: 'true'
+          git-push: 'false'
+          skip-git-pull: 'true'
       - name: create or update release pull request
-        if: steps.prepare.outputs.released == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
-          MESSAGE: ${{ steps.prepare.outputs.message }}
-        run: |
-          body="Merging this pull request publishes the releases listed in the title. See CHANGELOG.md for the release notes."
-          if gh pr view release/next --json state --jq '.state' | grep -q '^OPEN$'; then
-            gh pr edit release/next --title "$MESSAGE" --body "$body"
-          else
-            gh pr create --head release/next --base main --title "$MESSAGE" --body "$body"
-          fi
+        if: steps.changelog.outputs.skipped == 'false'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+          branch: release/${{ matrix.name }}
+          base: main
+          add-paths: |
+            CHANGELOG.md
+            ${{ matrix.version-file }}
+          commit-message: "release: ${{ matrix.name }} v${{ steps.changelog.outputs.version }}"
+          title: "release: ${{ matrix.name }} v${{ steps.changelog.outputs.version }}"
+          body: "Merging this pull request publishes ${{ matrix.name }} v${{ steps.changelog.outputs.version }}."
 
   publish:
     if: "${{ contains(toJSON(github.event.commits.*.message), 'release: ') }}"
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mcchat
+            working-directory: .
+            tasks: ':mods:mcchat:build'
+            files: mods/mcchat/build/libs/*.jar
+          - name: mcchat-native
+            working-directory: apps
+            tasks: build
+            files: apps/MCChatNative/app/build/outputs/apk/*/*.apk
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
+      - name: release
+        id: release
+        if: "${{ contains(toJSON(github.event.commits.*.message), format('release: {0} v', matrix.name)) }}"
+        uses: CupOfTea696/gh-action-auto-release@v1.0.0
+        with:
+          title: "${{ matrix.name }} $semver"
+          tag: "${{ matrix.name }}-v$semver"
+          changelog-entry: "$semver"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: setup jdk
+        if: steps.release.outputs.released == 'true'
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'microsoft'
-      - name: make gradle wrappers executable
-        run: chmod +x ./gradlew apps/gradlew
-      - name: release mod
-        id: release_mod
-        uses: CupOfTea696/gh-action-auto-release@v1.0.0
-        with:
-          title: "mcchat $semver"
-          tag: "mcchat-v$semver"
-          changelog-entry: "[mcchat] $semver"
-          regex: "/mcchat v#{semver}/"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: upload mod files
-        if: steps.release_mod.outputs.released == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.release_mod.outputs.version }}
+      - name: build
+        if: steps.release.outputs.released == 'true'
+        working-directory: ${{ matrix.working-directory }}
         run: |
-          ./gradlew :mods:mcchat:build
-          .github/scripts/upload_assets.sh "mcchat-v$VERSION" "$VERSION" mods/mcchat/build/libs/*.jar
-      - name: release app
-        id: release_app
-        uses: CupOfTea696/gh-action-auto-release@v1.0.0
-        with:
-          title: "mcchat-native $semver"
-          tag: "mcchat-native-v$semver"
-          changelog-entry: "[mcchat-native] $semver"
-          regex: "/mcchat-native v#{semver}/"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: upload app files
-        if: steps.release_app.outputs.released == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.release_app.outputs.version }}
+          chmod +x ./gradlew
+          ./gradlew ${{ matrix.tasks }}
+      - name: write file table
+        if: steps.release.outputs.released == 'true'
         run: |
-          (cd apps && ./gradlew build)
-          .github/scripts/upload_assets.sh "mcchat-native-v$VERSION" "$VERSION" apps/MCChatNative/app/build/outputs/apk/*/*.apk
+          {
+            echo "| File | Version | SHA256 |"
+            echo "| --- | --- | --- |"
+            for file in ${{ matrix.files }}; do
+              echo "| \`$(basename "$file")\` | ${{ steps.release.outputs.version }} | \`$(sha256sum "$file" | cut -d' ' -f1)\` |"
+            done
+          } > "${{ runner.temp }}/files.md"
+      - name: upload files and append table
+        if: steps.release.outputs.released == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ matrix.name }}-v${{ steps.release.outputs.version }}
+          files: ${{ matrix.files }}
+          body_path: ${{ runner.temp }}/files.md
+          append_body: true
