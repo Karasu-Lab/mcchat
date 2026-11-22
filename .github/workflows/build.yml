@@ -4,7 +4,15 @@
 # against bad commits.
 
 name: build
-on: [pull_request, push]
+on:
+  pull_request:
+    paths-ignore:
+      - 'apps/**'
+      - '.github/workflows/android.yml'
+  push:
+    paths-ignore:
+      - 'apps/**'
+      - '.github/workflows/android.yml'
 
 jobs:
   format:
