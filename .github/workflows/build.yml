@@ -27,7 +27,7 @@ jobs:
         run: gh release download --repo google/google-java-format --pattern '*all-deps.jar' --output google-java-format.jar
       - name: format java sources
         run: |
-          find src -name '*.java' -print0 | xargs -0 -r java \
+          find mods -path '*/src/*' -name '*.java' -print0 | xargs -0 -r java \
             --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
             --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
             --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src
+          git add mods
           if ! git diff --cached --quiet; then
             git commit -m "style: format java sources with google-java-format"
             git push
@@ -68,4 +68,4 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: Artifacts
-          path: build/libs/
+          path: mods/*/build/libs/
