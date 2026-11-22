@@ -23,7 +23,7 @@ class CapturePipelineTest {
 
   @BeforeEach
   void setUp() {
-    pipeline = new CapturePipeline(2);
+    pipeline = new CapturePipeline();
     pipeline.addSink(out::add);
   }
 
@@ -41,15 +41,17 @@ class CapturePipelineTest {
   @Test
   void preservesSubmissionOrderAndTrimsHistory() throws Exception {
     pipeline.setAuthority(Origin.CLIENT);
-    for (String text : List.of("a", "b", "c")) {
-      pipeline.submit(CapturedData.of(Origin.CLIENT, Kind.CHAT_RECEIVED, ALEX, text));
+    for (int i = 0; i <= 100; i++) {
+      pipeline.submit(CapturedData.of(Origin.CLIENT, Kind.CHAT_RECEIVED, ALEX, "m" + i));
     }
-    for (String text : List.of("a", "b", "c")) {
-      assertEquals(Optional.of(text), next().data().get().content());
+    for (int i = 0; i <= 100; i++) {
+      assertEquals(Optional.of("m" + i), next().data().get().content());
     }
 
     List<CapturedData> history = pipeline.snapshot().world().context().history();
-    assertEquals(List.of("b", "c"), history.stream().map(d -> d.content().get()).toList());
+    assertEquals(100, history.size());
+    assertEquals(Optional.of("m1"), history.get(0).content());
+    assertEquals(Optional.of("m100"), history.get(99).content());
   }
 
   @Test

@@ -30,15 +30,13 @@ public class ChatNativeClient implements ClientModInitializer {
     ClientCapture.register();
 
     int port = ChatNative.config().clientPort;
-    if (port > 0) {
-      tcp = new TCPServer(pipeline::snapshot, this::receive);
-      try {
-        tcp.start(port);
-        pipeline.addSink(new TCPSink(tcp));
-      } catch (IOException e) {
-        ChatNative.LOGGER.error("Failed to open TCP port {}", port, e);
-        tcp = null;
-      }
+    tcp = new TCPServer(pipeline::snapshot, this::receive);
+    try {
+      tcp.start(port);
+      pipeline.addSink(new TCPSink(tcp));
+    } catch (IOException e) {
+      ChatNative.LOGGER.error("Failed to open TCP port {}", port, e);
+      tcp = null;
     }
 
     ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
@@ -75,7 +73,7 @@ public class ChatNativeClient implements ClientModInitializer {
 
   private void connectUpstream(
       CapturePipeline pipeline, CaptureEndpointPayload payload, Minecraft client) {
-    if (tcp == null || !ChatNative.config().useUpstream) {
+    if (tcp == null) {
       return;
     }
     ServerData server = client.getCurrentServer();

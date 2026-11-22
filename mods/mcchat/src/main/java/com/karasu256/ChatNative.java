@@ -41,7 +41,7 @@ public class ChatNative implements ModInitializer {
   @Override
   public void onInitialize() {
     config = ChatNativeConfig.load();
-    pipeline = new CapturePipeline(config.historySize);
+    pipeline = new CapturePipeline();
     ServerCapture.register();
 
     PayloadTypeRegistry.clientboundPlay()
@@ -69,11 +69,8 @@ public class ChatNative implements ModInitializer {
   }
 
   private static void startDedicatedCapture(MinecraftServer server) {
-    dedicatedPipeline = new CapturePipeline(config.historySize);
+    dedicatedPipeline = new CapturePipeline();
     dedicatedPipeline.reset("", server.getMotd(), Origin.SERVER);
-    if (config.serverPort <= 0) {
-      return;
-    }
     TCPServer tcp = new TCPServer(dedicatedPipeline::snapshot, packet -> {});
     try {
       tcp.start(config.serverPort);

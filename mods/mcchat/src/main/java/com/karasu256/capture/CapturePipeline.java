@@ -10,15 +10,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class CapturePipeline implements AutoCloseable {
   private final BlockingQueue<Runnable> queue = new ArrayBlockingQueue<>(1024);
   private final List<CaptureSink> sinks = new CopyOnWriteArrayList<>();
-  private final int historySize;
   private final Thread worker;
 
   private volatile WorldData world = WorldData.empty("", "");
   private volatile Origin authority = Origin.CLIENT;
   private volatile boolean running = true;
 
-  public CapturePipeline(int historySize) {
-    this.historySize = historySize;
+  public CapturePipeline() {
     this.worker = Thread.ofVirtual().name("chatnative-pipeline").unstarted(this::run);
     this.worker.start();
   }
@@ -82,7 +80,7 @@ public final class CapturePipeline implements AutoCloseable {
       return;
     }
     WorldData current = world;
-    world = current.withContext(current.context().apply(data, historySize));
+    world = current.withContext(current.context().apply(data, 100));
     emit(CapturedPacket.event(authority, world, data));
   }
 

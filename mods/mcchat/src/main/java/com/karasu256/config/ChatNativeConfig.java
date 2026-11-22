@@ -13,8 +13,6 @@ public final class ChatNativeConfig {
 
   public int clientPort = 25570;
   public int serverPort = 25566;
-  public int historySize = 100;
-  public boolean useUpstream = true;
 
   public static ChatNativeConfig load() {
     Path path = FabricLoader.getInstance().getConfigDir().resolve(ChatNative.MOD_ID + ".json");

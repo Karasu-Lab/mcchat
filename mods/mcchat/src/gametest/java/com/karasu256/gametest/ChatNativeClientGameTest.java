@@ -6,6 +6,7 @@ import com.karasu256.capture.CapturedData.Kind;
 import com.karasu256.capture.CapturedPacket;
 import com.karasu256.capture.Origin;
 import com.karasu256.capture.WorldData;
+import com.karasu256.net.CaptureEndpointPayload;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerConnection;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
@@ -26,15 +28,15 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
   @Override
   public void runTest(ClientGameTestContext context) {
     try (TcpCapture capture = new TcpCapture(ChatNative.config().clientPort)) {
-      clientCacheFlowsWithoutUpstream(context, capture);
       serverDataFlowsThroughUpstream(context, capture);
+      clientCacheFlowsWithoutUpstream(context, capture);
     } catch (IOException e) {
       throw new AssertionError(e);
     }
   }
 
   private void clientCacheFlowsWithoutUpstream(ClientGameTestContext context, TcpCapture capture) {
-    ChatNative.config().useUpstream = false;
+    ClientPlayNetworking.unregisterGlobalReceiver(CaptureEndpointPayload.TYPE.id());
     capture.clear();
 
     try (TestDedicatedServerContext server = context.worldBuilder().createServer();
@@ -73,7 +75,6 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
   }
 
   private void serverDataFlowsThroughUpstream(ClientGameTestContext context, TcpCapture capture) {
-    ChatNative.config().useUpstream = true;
     capture.clear();
 
     try (TestDedicatedServerContext server = context.worldBuilder().createServer();
