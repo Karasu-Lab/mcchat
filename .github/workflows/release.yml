@@ -10,12 +10,15 @@ jobs:
   prepare:
     if: "${{ !contains(toJSON(github.event.commits.*.message), 'release: ') }}"
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - name: update versions and changelog
         id: prepare
         run: python3 .github/scripts/prepare_release.py
@@ -33,7 +36,7 @@ jobs:
       - name: create or update release pull request
         if: steps.prepare.outputs.released == 'true'
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
           MESSAGE: ${{ steps.prepare.outputs.message }}
         run: |
           body="Merging this pull request publishes the releases listed in the title. See CHANGELOG.md for the release notes."
@@ -51,7 +54,15 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: make gradle wrappers executable
+        run: chmod +x ./gradlew apps/gradlew
       - name: release mod
+        id: release_mod
         uses: CupOfTea696/gh-action-auto-release@v1.0.0
         with:
           title: "mcchat $semver"
@@ -60,7 +71,16 @@ jobs:
           regex: "/mcchat v#{semver}/"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: upload mod files
+        if: steps.release_mod.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release_mod.outputs.version }}
+        run: |
+          ./gradlew :mods:mcchat:build
+          .github/scripts/upload_assets.sh "mcchat-v$VERSION" "$VERSION" mods/mcchat/build/libs/*.jar
       - name: release app
+        id: release_app
         uses: CupOfTea696/gh-action-auto-release@v1.0.0
         with:
           title: "mcchat-native $semver"
@@ -69,3 +89,11 @@ jobs:
           regex: "/mcchat-native v#{semver}/"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: upload app files
+        if: steps.release_app.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.release_app.outputs.version }}
+        run: |
+          (cd apps && ./gradlew build)
+          .github/scripts/upload_assets.sh "mcchat-native-v$VERSION" "$VERSION" apps/MCChatNative/app/build/outputs/apk/*/*.apk
