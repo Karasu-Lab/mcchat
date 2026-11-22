@@ -7,7 +7,7 @@ android {
 
     defaultConfig {
         applicationId = "com.karasu256.mcchatnative"
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 }
