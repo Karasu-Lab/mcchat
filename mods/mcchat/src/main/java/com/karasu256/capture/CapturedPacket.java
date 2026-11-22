@@ -19,14 +19,13 @@ public record CapturedPacket(
   }
 
   public static final Codec<CapturedPacket> CODEC =
-      RecordCodecBuilder.create(
-          i ->
-              i.group(
-                      Type.CODEC.fieldOf("type").forGetter(CapturedPacket::type),
-                      Origin.CODEC.fieldOf("authority").forGetter(CapturedPacket::authority),
-                      WorldData.CODEC.fieldOf("world").forGetter(CapturedPacket::world),
-                      CapturedData.CODEC.optionalFieldOf("data").forGetter(CapturedPacket::data))
-                  .apply(i, CapturedPacket::new));
+      RecordCodecBuilder.create(i ->
+          i.group(
+                  Type.CODEC.fieldOf("type").forGetter(CapturedPacket::type),
+                  Origin.CODEC.fieldOf("authority").forGetter(CapturedPacket::authority),
+                  WorldData.CODEC.fieldOf("world").forGetter(CapturedPacket::world),
+                  CapturedData.CODEC.optionalFieldOf("data").forGetter(CapturedPacket::data))
+              .apply(i, CapturedPacket::new));
 
   public static CapturedPacket event(Origin authority, WorldData world, CapturedData data) {
     return new CapturedPacket(Type.EVENT, authority, world.withoutContext(), Optional.of(data));

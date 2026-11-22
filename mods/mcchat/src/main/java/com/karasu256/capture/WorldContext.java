@@ -9,18 +9,17 @@ public record WorldContext(List<PlayerRef> players, List<CapturedData> history) 
   public static final WorldContext EMPTY = new WorldContext(List.of(), List.of());
 
   public static final Codec<WorldContext> CODEC =
-      RecordCodecBuilder.create(
-          i ->
-              i.group(
-                      PlayerRef.CODEC
-                          .listOf()
-                          .optionalFieldOf("players", List.of())
-                          .forGetter(WorldContext::players),
-                      CapturedData.CODEC
-                          .listOf()
-                          .optionalFieldOf("history", List.of())
-                          .forGetter(WorldContext::history))
-                  .apply(i, WorldContext::new));
+      RecordCodecBuilder.create(i ->
+          i.group(
+                  PlayerRef.CODEC
+                      .listOf()
+                      .optionalFieldOf("players", List.of())
+                      .forGetter(WorldContext::players),
+                  CapturedData.CODEC
+                      .listOf()
+                      .optionalFieldOf("history", List.of())
+                      .forGetter(WorldContext::history))
+              .apply(i, WorldContext::new));
 
   public WorldContext without(CapturedData.Kind kind) {
     return new WorldContext(players, history.stream().filter(d -> d.kind() != kind).toList());

@@ -99,8 +99,7 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
           "commands executed on the server must never reach the client capture");
 
       server.runCommand("say from-server");
-      CapturedPacket said =
-          capture.await(context, p -> contentContains(p, "from-server"));
+      CapturedPacket said = capture.await(context, p -> contentContains(p, "from-server"));
       require(said.authority() == Origin.SERVER, "server data must carry server authority");
       require(said.data().get().origin() == Origin.SERVER, "server data must not be a cache");
 
@@ -112,10 +111,9 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
       context.waitTicks(20);
       boolean cacheLeaked =
           capture.packets().stream()
-              .anyMatch(
-                  p ->
-                      p.type() == CapturedPacket.Type.EVENT
-                          && p.data().get().origin() == Origin.CLIENT);
+              .anyMatch(p ->
+                  p.type() == CapturedPacket.Type.EVENT
+                      && p.data().get().origin() == Origin.CLIENT);
       require(!cacheLeaked, "client cache must not be delivered while the server is the truth");
     }
   }

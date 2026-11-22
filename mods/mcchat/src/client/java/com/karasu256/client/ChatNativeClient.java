@@ -41,26 +41,24 @@ public class ChatNativeClient implements ClientModInitializer {
       }
     }
 
-    ClientPlayConnectionEvents.JOIN.register(
-        (handler, sender, client) -> {
-          if (tcp != null) {
-            tcp.disconnectUpstream();
-          }
-          resetWorld(pipeline, client);
-          ClientCapture.submitPlayerList(client);
-        });
+    ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+      if (tcp != null) {
+        tcp.disconnectUpstream();
+      }
+      resetWorld(pipeline, client);
+      ClientCapture.submitPlayerList(client);
+    });
 
     ClientPlayNetworking.registerGlobalReceiver(
         CaptureEndpointPayload.TYPE,
         (payload, context) -> connectUpstream(pipeline, payload, context.client()));
 
-    ClientLifecycleEvents.CLIENT_STOPPING.register(
-        client -> {
-          if (tcp != null) {
-            tcp.close();
-          }
-          pipeline.close();
-        });
+    ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+      if (tcp != null) {
+        tcp.close();
+      }
+      pipeline.close();
+    });
   }
 
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
@@ -113,15 +111,15 @@ public class ChatNativeClient implements ClientModInitializer {
     switch (data.kind()) {
       case CHAT_SENT -> client.execute(() -> withConnection(client, c -> c.sendChat(text)));
       case COMMAND_SENT ->
-          client.execute(
-              () ->
-                  withConnection(
-                      client, c -> c.sendCommand(text.startsWith("/") ? text.substring(1) : text)));
+          client.execute(() ->
+              withConnection(
+                  client, c -> c.sendCommand(text.startsWith("/") ? text.substring(1) : text)));
       default -> {}
     }
   }
 
-  private static void withConnection(Minecraft client, java.util.function.Consumer<ClientPacketListener> action) {
+  private static void withConnection(
+      Minecraft client, java.util.function.Consumer<ClientPacketListener> action) {
     ClientPacketListener connection = client.getConnection();
     if (connection != null) {
       action.accept(connection);

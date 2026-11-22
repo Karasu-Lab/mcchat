@@ -28,20 +28,19 @@ public record CapturedData(
   }
 
   public static final Codec<CapturedData> CODEC =
-      RecordCodecBuilder.create(
-          i ->
-              i.group(
-                      PlayerRef.UUID_CODEC.fieldOf("id").forGetter(CapturedData::id),
-                      Codec.LONG.fieldOf("timestamp").forGetter(CapturedData::timestampMillis),
-                      Origin.CODEC.fieldOf("origin").forGetter(CapturedData::origin),
-                      Kind.CODEC.fieldOf("kind").forGetter(CapturedData::kind),
-                      PlayerRef.CODEC.optionalFieldOf("player").forGetter(CapturedData::player),
-                      Codec.STRING.optionalFieldOf("content").forGetter(CapturedData::content),
-                      PlayerRef.CODEC
-                          .listOf()
-                          .optionalFieldOf("players", List.of())
-                          .forGetter(CapturedData::players))
-                  .apply(i, CapturedData::new));
+      RecordCodecBuilder.create(i ->
+          i.group(
+                  PlayerRef.UUID_CODEC.fieldOf("id").forGetter(CapturedData::id),
+                  Codec.LONG.fieldOf("timestamp").forGetter(CapturedData::timestampMillis),
+                  Origin.CODEC.fieldOf("origin").forGetter(CapturedData::origin),
+                  Kind.CODEC.fieldOf("kind").forGetter(CapturedData::kind),
+                  PlayerRef.CODEC.optionalFieldOf("player").forGetter(CapturedData::player),
+                  Codec.STRING.optionalFieldOf("content").forGetter(CapturedData::content),
+                  PlayerRef.CODEC
+                      .listOf()
+                      .optionalFieldOf("players", List.of())
+                      .forGetter(CapturedData::players))
+              .apply(i, CapturedData::new));
 
   public static CapturedData of(Origin origin, Kind kind, PlayerRef player, String content) {
     return new CapturedData(

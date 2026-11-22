@@ -18,19 +18,17 @@ public final class ClientCapture {
   private ClientCapture() {}
 
   public static void register() {
-    ClientReceiveMessageEvents.CHAT.register(
-        (message, signed, sender, params, receptionTime) ->
-            submit(
-                Kind.CHAT_RECEIVED,
-                sender == null ? null : PlayerRefs.of(sender),
-                signed != null ? signed.signedContent() : message.getString()));
+    ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, receptionTime) ->
+        submit(
+            Kind.CHAT_RECEIVED,
+            sender == null ? null : PlayerRefs.of(sender),
+            signed != null ? signed.signedContent() : message.getString()));
 
-    ClientReceiveMessageEvents.GAME.register(
-        (message, overlay) -> {
-          if (!overlay) {
-            submit(Kind.CHAT_RECEIVED, null, message.getString());
-          }
-        });
+    ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+      if (!overlay) {
+        submit(Kind.CHAT_RECEIVED, null, message.getString());
+      }
+    });
 
     ClientSendMessageEvents.CHAT.register(
         message -> submit(Kind.CHAT_SENT, localPlayer(), message));

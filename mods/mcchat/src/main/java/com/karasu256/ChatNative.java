@@ -47,28 +47,25 @@ public class ChatNative implements ModInitializer {
     PayloadTypeRegistry.clientboundPlay()
         .register(CaptureEndpointPayload.TYPE, CaptureEndpointPayload.CODEC);
 
-    ServerLifecycleEvents.SERVER_STARTED.register(
-        server -> {
-          if (server.isDedicatedServer()) {
-            startDedicatedCapture(server);
-          }
-        });
+    ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+      if (server.isDedicatedServer()) {
+        startDedicatedCapture(server);
+      }
+    });
 
-    ServerLifecycleEvents.SERVER_STOPPING.register(
-        server -> {
-          if (server.isDedicatedServer()) {
-            stopDedicatedCapture();
-          }
-        });
+    ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+      if (server.isDedicatedServer()) {
+        stopDedicatedCapture();
+      }
+    });
 
-    ServerPlayConnectionEvents.JOIN.register(
-        (handler, sender, server) -> {
-          if (server.isDedicatedServer()
-              && dedicatedServer != null
-              && ServerPlayNetworking.canSend(handler, CaptureEndpointPayload.TYPE)) {
-            sender.sendPacket(new CaptureEndpointPayload("", dedicatedServer.port()));
-          }
-        });
+    ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+      if (server.isDedicatedServer()
+          && dedicatedServer != null
+          && ServerPlayNetworking.canSend(handler, CaptureEndpointPayload.TYPE)) {
+        sender.sendPacket(new CaptureEndpointPayload("", dedicatedServer.port()));
+      }
+    });
   }
 
   private static void startDedicatedCapture(MinecraftServer server) {

@@ -42,20 +42,18 @@ public final class CapturePipeline implements AutoCloseable {
   }
 
   public void reset(String host, String worldName, Origin newAuthority) {
-    enqueue(
-        () -> {
-          authority = newAuthority;
-          world = WorldData.empty(host, worldName);
-          emit(new CapturedPacket(CapturedPacket.Type.RESET, authority, world, Optional.empty()));
-        });
+    enqueue(() -> {
+      authority = newAuthority;
+      world = WorldData.empty(host, worldName);
+      emit(new CapturedPacket(CapturedPacket.Type.RESET, authority, world, Optional.empty()));
+    });
   }
 
   public void adoptContext(WorldContext context) {
-    enqueue(
-        () -> {
-          world = world.withContext(context);
-          emit(new CapturedPacket(CapturedPacket.Type.SNAPSHOT, authority, world, Optional.empty()));
-        });
+    enqueue(() -> {
+      world = world.withContext(context);
+      emit(new CapturedPacket(CapturedPacket.Type.SNAPSHOT, authority, world, Optional.empty()));
+    });
   }
 
   public void setAuthority(Origin newAuthority) {
