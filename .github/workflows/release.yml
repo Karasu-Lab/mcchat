@@ -87,6 +87,7 @@ jobs:
           title: "${{ matrix.name }} $semver"
           tag: "${{ matrix.name }}-v$semver"
           changelog-entry: "$semver"
+          draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: setup jdk
