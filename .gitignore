@@ -32,8 +32,6 @@ bin/
 
 run/
 
-# android
-
 local.properties
 
 # java
