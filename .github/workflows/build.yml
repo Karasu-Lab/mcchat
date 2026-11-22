@@ -7,11 +7,52 @@ name: build
 on: [pull_request, push]
 
 jobs:
+  format:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: download google-java-format
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download --repo google/google-java-format --pattern '*all-deps.jar' --output google-java-format.jar
+      - name: format java sources
+        run: |
+          find src -name '*.java' -print0 | xargs -0 -r java \
+            --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
+            --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
+            --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
+            --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
+            --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED \
+            -jar google-java-format.jar --replace
+      - name: commit formatted sources
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          if ! git diff --cached --quiet; then
+            git commit -m "style: format java sources with google-java-format"
+            git push
+          fi
+
   build:
+    needs: format
     runs-on: ubuntu-24.04
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
       - name: setup jdk
