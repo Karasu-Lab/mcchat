@@ -32,6 +32,10 @@ bin/
 
 run/
 
+# android
+
+local.properties
+
 # java
 
 hs_err_*.log
