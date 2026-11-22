@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   prepare:
-    if: ${{ !contains(toJSON(github.event.commits.*.message), 'release: ') }}
+    if: "${{ !contains(toJSON(github.event.commits.*.message), 'release: ') }}"
     runs-on: ubuntu-24.04
     steps:
       - name: checkout repository
@@ -44,7 +44,7 @@ jobs:
           fi
 
   publish:
-    if: ${{ contains(toJSON(github.event.commits.*.message), 'release: ') }}
+    if: "${{ contains(toJSON(github.event.commits.*.message), 'release: ') }}"
     runs-on: ubuntu-24.04
     permissions:
       contents: write
