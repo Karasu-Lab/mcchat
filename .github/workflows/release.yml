@@ -95,6 +95,9 @@ jobs:
         with:
           java-version: '25'
           distribution: 'microsoft'
+      - name: setup gradle
+        if: steps.release.outputs.released == 'true'
+        uses: gradle/actions/setup-gradle@v6
       - name: build
         if: steps.release.outputs.released == 'true'
         working-directory: ${{ matrix.working-directory }}
