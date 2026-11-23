@@ -31,13 +31,7 @@ public final class Shapes {
     draw(g, 0f, x0, y0, x1, y1, r, argb, null, 0f, 0f, 0f, 0f);
   }
 
-  static void face(
-      GuiGraphics g,
-      ResourceLocation texture,
-      int x,
-      int y,
-      int size,
-      float[] skin) {
+  static void face(GuiGraphics g, ResourceLocation texture, int x, int y, int size, float[] skin) {
     draw(
         g,
         1f,
