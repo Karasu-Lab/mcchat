@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/Karasu-Lab/mcchat/compare/mcchat-native-v1.6.0...mcchat-native-v1.7.0) (2026-11-23)
+
+
+### Features
+
+* sign build outputs with a shared gradle task ([7693a91](https://github.com/Karasu-Lab/mcchat/commit/7693a9106aab877414f557888a0d4097a0f5b5da))
+
 ## [1.6.0](https://github.com/Karasu-Lab/mcchat/compare/mcchat-native-v1.5.0...mcchat-native-v1.6.0) (2026-11-23)
 
 
