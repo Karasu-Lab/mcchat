@@ -61,6 +61,21 @@ data class ChatUiState(
     val headerUserLimit: Int = 5,
 ) {
     val replyTarget: ChatMessage? get() = messages.firstOrNull { it.id == replyingToId }
+    val replyableIds: Set<Long>
+        get() {
+            val currentWorldId = messages.lastOrNull { it.world != null }?.world?.id
+            var worldId: String? = null
+            return buildSet {
+                messages.forEach { message ->
+                    val divider = message.world
+                    if (divider != null) {
+                        worldId = divider.id
+                    } else if (worldId == currentWorldId) {
+                        add(message.id)
+                    }
+                }
+            }
+        }
     val canSend: Boolean get() = inWorld && draft.isNotBlank() && inChatScreen
     val headerUsers: List<User> get() = activeUsers.take(headerUserLimit)
 }
@@ -205,7 +220,9 @@ class ChatViewModel(
 
     fun onReplyToggle(messageId: Long) {
         _uiState.update { state ->
-            if (state.replyingToId == messageId) {
+            if (messageId !in state.replyableIds) {
+                state
+            } else if (state.replyingToId == messageId) {
                 state.copy(replyingToId = null, mentionEnabled = true)
             } else {
                 state.copy(replyingToId = messageId, mentionEnabled = true)
@@ -298,7 +315,7 @@ class ChatViewModel(
             if (it.messages.any { message -> message.id == id }) {
                 it
             } else {
-                it.copy(
+                val next = it.copy(
                     messages = it.messages + ChatMessage(
                         id = id,
                         sender = User(UserId("world"), world.name),
@@ -307,6 +324,11 @@ class ChatViewModel(
                         world = world,
                     ),
                 )
+                if (next.replyingToId in next.replyableIds) {
+                    next
+                } else {
+                    next.copy(replyingToId = null, mentionEnabled = true)
+                }
             }
         }
     }

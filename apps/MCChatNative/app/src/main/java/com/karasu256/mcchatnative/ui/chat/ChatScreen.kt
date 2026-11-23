@@ -231,6 +231,7 @@ private fun ChatContent(
                 currentUserId = state.currentUserId,
                 typingUsers = state.typingUsers.filter { it.id != state.currentUserId },
                 reactions = state.reactions,
+                replyableIds = state.replyableIds,
                 onReact = onReact,
                 onReplyToggle = onReplyToggle,
                 modifier = Modifier.weight(1f),
@@ -256,6 +257,7 @@ private fun MessageList(
     currentUserId: UserId,
     typingUsers: List<User>,
     reactions: List<ReactionData>,
+    replyableIds: Set<Long>,
     onReact: (Long, ReactionData) -> Unit,
     onReplyToggle: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -347,6 +349,7 @@ private fun MessageList(
                         reactions = reactions,
                         onReact = { onReact(message.id, it) },
                         onReply = { onReplyToggle(message.id) },
+                        replyEnabled = message.id in replyableIds,
                         flash = flash?.takeIf { it.messageId == message.id },
                         onReplyClick = {
                             message.replyId?.let { targetId ->
@@ -425,6 +428,7 @@ private fun MessageRow(
     reactions: List<ReactionData>,
     onReact: (ReactionData) -> Unit,
     onReply: () -> Unit,
+    replyEnabled: Boolean,
     flash: FlashRequest?,
     onReplyClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -456,7 +460,7 @@ private fun MessageRow(
         enter = chatItemEnter(origin),
         exit = chatItemExit(origin),
     ) {
-        SwipeToReply(onReply = onReply) {
+        SwipeToReply(onReply = onReply, enabled = replyEnabled) {
             MessageRowContent(
                 message,
                 isOwn,

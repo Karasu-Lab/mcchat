@@ -1,5 +1,6 @@
 package com.karasu256.capture;
 
+import com.karasu256.ChatNative;
 import com.karasu256.mcchat.common.component.ChatText;
 import java.util.Map;
 import java.util.UUID;
@@ -20,7 +21,8 @@ public final class ServerChatTextProcessor {
 
   public static ChatText received(ServerPlayer sender, String rawText, MinecraftServer server) {
     ChatText held = HELD_CHAT_TEXTS.remove(sender.getUUID());
-    return held != null && held.plain().equals(rawText) ? held : parse(rawText, server);
+    ChatText chatText = held != null && held.plain().equals(rawText) ? held : parse(rawText, server);
+    return chatText.withoutReplyUnless(ChatNative.pipelineFor(server)::hasMessage);
   }
 
   public static ChatText parse(String rawText, MinecraftServer server) {

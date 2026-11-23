@@ -31,6 +31,7 @@ fun SwipeToReply(
     modifier: Modifier = Modifier,
     threshold: Dp = 64.dp,
     maxDrag: Dp = 96.dp,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val offset = remember { Animatable(0f) }
@@ -42,7 +43,8 @@ fun SwipeToReply(
     val maxDragPx = with(density) { maxDrag.toPx() }
 
     Box(
-        modifier = modifier.pointerInput(thresholdPx, maxDragPx) {
+        modifier = modifier.pointerInput(thresholdPx, maxDragPx, enabled) {
+            if (!enabled) return@pointerInput
             detectHorizontalDragGestures(
                 onDragEnd = {
                     if (offset.value <= -thresholdPx) {

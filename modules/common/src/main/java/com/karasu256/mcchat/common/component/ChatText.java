@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public final class ChatText {
@@ -49,6 +50,17 @@ public final class ChatText {
 
   public boolean notifies(UUID me, UUID sender) {
     return components().stream().anyMatch(c -> c.notifies(me, sender));
+  }
+
+  public ChatText withoutReplyUnless(Predicate<UUID> targetExists) {
+    Optional<UUID> target = replyTarget();
+    if (!target.isPresent() || targetExists.test(target.get())) {
+      return this;
+    }
+    return new ChatText(
+        components().stream()
+            .filter(component -> !component.replyTarget().isPresent())
+            .collect(Collectors.toList()));
   }
 
   public ChatText withReply(ReplyData reply) {
