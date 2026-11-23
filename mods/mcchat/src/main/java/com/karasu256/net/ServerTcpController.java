@@ -60,7 +60,8 @@ public final class ServerTcpController {
   }
 
   private void start() {
-    CapturePipeline target = server == null ? ChatNative.pipeline() : ChatNative.pipelineFor(server);
+    CapturePipeline target =
+        server == null ? ChatNative.pipeline() : ChatNative.pipelineFor(server);
     TCPServer opened =
         new TCPServer(
             target::snapshot,
