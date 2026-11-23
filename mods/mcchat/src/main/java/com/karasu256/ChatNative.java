@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,15 @@ public class ChatNative implements ModInitializer {
 
   public static CapturePipeline pipeline() {
     return pipeline;
+  }
+
+  public static String levelId(MinecraftServer server) {
+    return server
+        .getWorldPath(LevelResource.ROOT)
+        .toAbsolutePath()
+        .normalize()
+        .getFileName()
+        .toString();
   }
 
   public static CapturePipeline pipelineFor(MinecraftServer server) {
@@ -74,7 +84,7 @@ public class ChatNative implements ModInitializer {
 
   private static void startDedicatedCapture(MinecraftServer server) {
     dedicatedPipeline = new CapturePipeline();
-    dedicatedPipeline.reset(server.getWorldData().getLevelName(), server.getMotd(), Origin.SERVER);
+    dedicatedPipeline.reset(levelId(server), server.getMotd(), Origin.SERVER);
     dedicatedPipeline.setOnline(true, null);
     dedicatedServer = openServerPort(dedicatedPipeline);
   }

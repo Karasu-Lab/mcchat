@@ -23,7 +23,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.server.IntegratedServer;
-import net.minecraft.world.level.storage.LevelResource;
 
 public class ChatNativeClient implements ClientModInitializer {
   private TCPServer tcp;
@@ -72,14 +71,8 @@ public class ChatNativeClient implements ClientModInitializer {
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
-      String folder =
-          local
-              .getWorldPath(LevelResource.ROOT)
-              .toAbsolutePath()
-              .normalize()
-              .getFileName()
-              .toString();
-      pipeline.reset(folder, local.getWorldData().getLevelName(), Origin.SERVER);
+      pipeline.reset(
+          ChatNative.levelId(local), local.getWorldData().getLevelName(), Origin.SERVER);
       local.execute(() ->
           pipeline.submit(
               CapturedData.playerList(Origin.SERVER, ServerCapture.onlinePlayers(local))));
