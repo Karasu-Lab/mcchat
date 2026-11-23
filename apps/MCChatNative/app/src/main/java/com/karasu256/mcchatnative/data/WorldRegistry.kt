@@ -14,7 +14,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 object WorldRegistry {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + ErrorReporter.coroutineHandler)
+    private val scope =
+        CoroutineScope(SupervisorJob() + Dispatchers.IO + ErrorReporter.coroutineHandler)
     private val _worlds = MutableStateFlow<Map<String, World>>(emptyMap())
     private var store: DataStore<WorldStoreData>? = null
 

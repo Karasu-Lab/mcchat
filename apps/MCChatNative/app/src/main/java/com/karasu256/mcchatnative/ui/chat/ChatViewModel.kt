@@ -9,12 +9,12 @@ import com.karasu256.mcchatnative.data.ClientRepository
 import com.karasu256.mcchatnative.data.ConnectionManager
 import com.karasu256.mcchatnative.model.ChatEvent
 import com.karasu256.mcchatnative.model.ChatMessage
-import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.Client
 import com.karasu256.mcchatnative.model.MessageReaction
 import com.karasu256.mcchatnative.model.ReactionData
 import com.karasu256.mcchatnative.model.ReactionIntent
 import com.karasu256.mcchatnative.model.Reactions
+import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
 import com.karasu256.mcchatnative.model.World
 import kotlinx.coroutines.Job
@@ -59,9 +59,10 @@ data class ChatUiState(
     val replyingToId: Long? = null,
     val mentionEnabled: Boolean = true,
     val inWorld: Boolean = false,
+    val inChatScreen: Boolean = false,
 ) {
     val replyTarget: ChatMessage? get() = messages.firstOrNull { it.id == replyingToId }
-    val canSend: Boolean get() = inWorld && draft.isNotBlank()
+    val canSend: Boolean get() = inWorld && draft.isNotBlank() && inChatScreen
     val headerUsers: List<User> get() = activeUsers.take(HeaderUserLimit)
 }
 
@@ -102,6 +103,17 @@ class ChatViewModel(
             }
         }
         viewModelScope.launch {
+            ConnectionManager.inChatScreen(clientId).collect { inChatScreen ->
+                _uiState.update { it.copy(inChatScreen = inChatScreen) }
+            }
+        }
+        viewModelScope.launch {
+            while (true) {
+                ConnectionManager.requestStatus(clientId)
+                delay(1_000L)
+            }
+        }
+        viewModelScope.launch {
             ConnectionManager.self(clientId).collect { user ->
                 if (user != null) {
                     selfUser = user
@@ -124,14 +136,28 @@ class ChatViewModel(
                 nextLocalId = minOf(restored.minOfOrNull { it.id } ?: 0, 0) - 1
                 _uiState.update { it.copy(messages = restored + it.messages) }
                 launch {
-                    _uiState.map { it.messages }.distinctUntilChanged().collect { ChatHistoryStore.save(host, it) }
+                    _uiState.map { it.messages }.distinctUntilChanged()
+                        .collect { ChatHistoryStore.save(host, it) }
                 }
             }
             source.events(clientId).collect { event ->
                 when (event) {
                     is ChatEvent.Message ->
-                        receiveMessage(event.id, event.sender, event.body, event.replyId, event.isReply, event.timestampMillis)
-                    is ChatEvent.WorldChanged -> receiveWorldChange(event.id, event.world, event.timestampMillis)
+                        receiveMessage(
+                            event.id,
+                            event.sender,
+                            event.body,
+                            event.replyId,
+                            event.isReply,
+                            event.timestampMillis
+                        )
+
+                    is ChatEvent.WorldChanged -> receiveWorldChange(
+                        event.id,
+                        event.world,
+                        event.timestampMillis
+                    )
+
                     is ChatEvent.Typing -> receiveTyping(event.user, event.isTyping)
                     is ChatEvent.Reaction -> receiveReaction(event.intent)
                 }
@@ -229,7 +255,16 @@ class ChatViewModel(
             if (it.messages.any { message -> message.id == id }) {
                 it
             } else {
-                it.copy(messages = it.messages + newMessage(id, sender, body, replyId, isReply, timestampMillis))
+                it.copy(
+                    messages = it.messages + newMessage(
+                        id,
+                        sender,
+                        body,
+                        replyId,
+                        isReply,
+                        timestampMillis
+                    )
+                )
             }
         }
     }

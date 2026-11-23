@@ -35,11 +35,16 @@ object DataStores {
     private val stores = ConcurrentHashMap<String, DataStore<*>>()
 
     @Suppress("UNCHECKED_CAST")
-    fun <T> get(context: Context, fileName: String, serializer: JsonOkioSerializer<T>): DataStore<T> =
+    fun <T> get(
+        context: Context,
+        fileName: String,
+        serializer: JsonOkioSerializer<T>
+    ): DataStore<T> =
         stores.getOrPut(fileName) {
             DataStoreFactory.create(
                 storage = OkioStorage(FileSystem.SYSTEM, serializer) {
-                    context.applicationContext.filesDir.resolve("datastore").resolve(fileName).absolutePath.toPath()
+                    context.applicationContext.filesDir.resolve("datastore")
+                        .resolve(fileName).absolutePath.toPath()
                 },
             )
         } as DataStore<T>

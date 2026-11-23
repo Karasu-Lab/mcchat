@@ -1,7 +1,7 @@
 package com.karasu256.mcchatnative.data
 
-import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.DrawerUser
+import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
 
 object ClientRepository {

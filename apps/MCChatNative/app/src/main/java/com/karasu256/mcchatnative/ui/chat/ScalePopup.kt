@@ -15,10 +15,6 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 
-private const val PopupEnterMillis = 200
-private const val PopupExitMillis = 150
-private const val PopupInitialScale = 0.6f
-
 @Composable
 fun ScalePopup(
     visible: Boolean,
@@ -26,6 +22,9 @@ fun ScalePopup(
     transformOrigin: TransformOrigin,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    enterMillis: Int = 200,
+    exitMillis: Int = 150,
+    initialScale: Float = 0.6f,
     content: @Composable () -> Unit,
 ) {
     val state = remember { MutableTransitionState(false) }
@@ -41,10 +40,18 @@ fun ScalePopup(
         AnimatedVisibility(
             visibleState = state,
             modifier = modifier,
-            enter = fadeIn(tween(PopupEnterMillis)) +
-                scaleIn(tween(PopupEnterMillis), initialScale = PopupInitialScale, transformOrigin = transformOrigin),
-            exit = fadeOut(tween(PopupExitMillis)) +
-                scaleOut(tween(PopupExitMillis), targetScale = PopupInitialScale, transformOrigin = transformOrigin),
+            enter = fadeIn(tween(enterMillis)) +
+                    scaleIn(
+                        tween(enterMillis),
+                        initialScale = initialScale,
+                        transformOrigin = transformOrigin
+                    ),
+            exit = fadeOut(tween(exitMillis)) +
+                    scaleOut(
+                        tween(exitMillis),
+                        targetScale = initialScale,
+                        transformOrigin = transformOrigin
+                    ),
         ) {
             content()
         }
