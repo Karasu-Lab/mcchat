@@ -60,7 +60,6 @@ public final class ChatTheme {
     public final int vanillaChatLeft;
     public final int scrollStep;
     public final float maxWidthRatio;
-    public final int iconTextureSize;
     public final int typingCycleMillis;
     public final float typingStagger;
     public final int skinSize;
@@ -77,7 +76,6 @@ public final class ChatTheme {
       vanillaChatLeft = 4;
       scrollStep = 18;
       maxWidthRatio = 0.5f;
-      iconTextureSize = 64;
       typingCycleMillis = 1200;
       typingStagger = 0.15f;
       skinSize = 64;
