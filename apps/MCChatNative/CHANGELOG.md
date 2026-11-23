@@ -5,7 +5,12 @@
 
 ### Features
 
+* add reply and mention chat text components with @ completion ([dcf6373](https://github.com/Karasu-Lab/mcchat/commit/dcf637302fc67591fa477e74d71ff9f153361bd2))
+* animate header avatars and clear players on leaving the world ([2e30f3e](https://github.com/Karasu-Lab/mcchat/commit/2e30f3ebfc2a02489c375aca3b0b50a743a3489b))
+* disallow replies to messages from a different world ([beead15](https://github.com/Karasu-Lab/mcchat/commit/beead153a31dd1b76db73c520921a074682d62f8))
 * port the screen state, world icon and event class design to main ([7e8f666](https://github.com/Karasu-Lab/mcchat/commit/7e8f66623ddf4a8a60efe1f714778355bba53f7c))
+* report the current screen and world icon to the app ([8c261b6](https://github.com/Karasu-Lab/mcchat/commit/8c261b61562afa6006bfde0f0ee22d66ec5877fd))
+* show the mention candidates as a scaling overlay ([af85094](https://github.com/Karasu-Lab/mcchat/commit/af850949e5e37903810b9e5534fa33b47b8c2abc))
 
 ## [1.5.0](https://github.com/Karasu-Lab/mcchat/compare/mcchat-native-v1.4.0...mcchat-native-v1.5.0) (2026-11-23)
 
