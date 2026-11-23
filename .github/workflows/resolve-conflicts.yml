@@ -1,0 +1,65 @@
+name: resolve conflicts
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      found: ${{ steps.detect.outputs.found }}
+    steps:
+      - name: find conflicting pull requests
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            prs=$(gh pr list --state open --json number,headRefName,baseRefName,mergeable,isCrossRepository)
+            if ! jq -e 'any(.[]; .mergeable == "UNKNOWN")' <<< "$prs" > /dev/null; then
+              break
+            fi
+            sleep 10
+          done
+          conflicting=$(jq -c '[.[] | select(.mergeable == "CONFLICTING" and (.isCrossRepository | not)) | {number, head: .headRefName, base: .baseRefName}]' <<< "$prs")
+          echo "matrix={\"include\":$conflicting}" >> "$GITHUB_OUTPUT"
+          echo "found=$(jq 'length > 0' <<< "$conflicting")" >> "$GITHUB_OUTPUT"
+
+  resolve:
+    needs: detect
+    if: needs.detect.outputs.found == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
+    concurrency:
+      group: resolve-conflicts-${{ matrix.number }}
+      cancel-in-progress: false
+    steps:
+      - name: checkout pull request branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ matrix.head }}
+          fetch-depth: 0
+      - name: configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: merge base branch
+        run: |
+          printf 'CHANGELOG.md merge=union\n' >> .git/info/attributes
+          git fetch origin "${{ matrix.base }}"
+          git merge --no-edit "origin/${{ matrix.base }}"
+      - name: push merged branch
+        run: git push origin "HEAD:${{ matrix.head }}"
