@@ -72,7 +72,13 @@ public class ChatNativeClient implements ClientModInitializer {
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
-      String folder = local.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().getFileName().toString();
+      String folder =
+          local
+              .getWorldPath(LevelResource.ROOT)
+              .toAbsolutePath()
+              .normalize()
+              .getFileName()
+              .toString();
       pipeline.reset(folder, local.getWorldData().getLevelName(), Origin.SERVER);
       local.execute(() ->
           pipeline.submit(
