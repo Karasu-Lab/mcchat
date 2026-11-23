@@ -93,7 +93,7 @@ public final class ClientChatTextProcessor {
         || !payload.sender().equals(senderId)
         || !payload.text().plain().equals(rawText)) {
       return new ReceivedChat(
-          UUID.randomUUID(), sender, ChatText.parse(rawText, onlinePlayers()), display, false, now);
+          UUID.randomUUID(), sender, ChatText.raw(rawText), display, false, now);
     }
     boolean mention = payload.text().mentioned().contains(ClientCapture.sessionPlayer().uuid());
     highlightNextMessage = mention;
