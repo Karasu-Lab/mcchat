@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
 
@@ -19,8 +18,9 @@ android {
 
 dependencies {
     implementation("com.karasu256.mcchat:common")
-    implementation(libs.androidx.datastore.okio)
+    implementation(libs.androidx.room.runtime)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.compose.destinations.core)
+    ksp(libs.androidx.room.compiler)
     ksp(libs.compose.destinations.ksp)
 }
