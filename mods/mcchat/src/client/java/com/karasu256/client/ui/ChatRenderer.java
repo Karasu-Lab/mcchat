@@ -56,13 +56,11 @@ final class ChatRenderer {
   private void replyRow(
       GuiGraphics g, Font font, ChatLog log, ChatLog.Message target, int width, int top) {
     ChatTheme.Metrics m = theme.metrics;
-    fillRound(
-        g,
+    g.fill(
         m.vanillaInputSide,
         top,
         width - m.vanillaInputSide,
         top + m.replyRowHeight,
-        m.replyRowHeight / 2,
         Minecraft.getInstance().options.getBackgroundColor(Integer.MIN_VALUE));
     int buttonTop = top;
     int avatarX = m.vanillaChatLeft;
