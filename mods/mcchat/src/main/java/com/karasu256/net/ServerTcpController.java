@@ -1,0 +1,97 @@
+package com.karasu256.net;
+
+import com.karasu256.ChatNative;
+import com.karasu256.capture.CapturePipeline;
+import com.karasu256.config.TcpConfig;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.event.EventRegistry;
+import com.karasu256.mcchat.common.event.TypingEvent;
+import java.io.IOException;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+
+public final class ServerTcpController {
+  private final TcpConfig config;
+
+  private MinecraftServer server;
+  private volatile TCPServer tcp;
+  private TCPSink sink;
+
+  public ServerTcpController(TcpConfig config) {
+    this.config = config;
+    config.onSaved(this::apply);
+  }
+
+  public TCPServer tcp() {
+    return tcp;
+  }
+
+  public synchronized void attach(MinecraftServer server) {
+    this.server = server;
+    apply();
+  }
+
+  public synchronized void detach() {
+    stop();
+    server = null;
+  }
+
+  private synchronized void apply() {
+    if (server == null) {
+      return;
+    }
+    if (tcp != null && (!config.enabled || tcp.port() != config.port)) {
+      stop();
+    }
+    if (tcp == null && config.enabled) {
+      start();
+    }
+  }
+
+  private void start() {
+    CapturePipeline target = ChatNative.pipelineFor(server);
+    TCPServer opened =
+        new TCPServer(
+            target::snapshot,
+            packet -> {
+              if (packet.type() == CapturedPacket.Type.PING) {
+                target.requestStatus();
+              } else if (packet.type() == CapturedPacket.Type.EVENT) {
+                packet
+                    .event()
+                    .filter(TypingEvent.class::isInstance)
+                    .map(TypingEvent.class::cast)
+                    .ifPresent(typing -> target.submit(typing.relayedAs(target, Origin.SERVER)));
+              }
+            },
+            EventRegistry.common());
+    try {
+      opened.start(config.port);
+    } catch (IOException e) {
+      ChatNative.LOGGER.error("Failed to open TCP port {}", config.port, e);
+      return;
+    }
+    tcp = opened;
+    sink = new TCPSink(opened);
+    target.addSink(sink);
+    if (server.isDedicatedServer()) {
+      for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+        if (ServerPlayNetworking.canSend(player, CaptureEndpointPayload.TYPE)) {
+          ServerPlayNetworking.send(player, new CaptureEndpointPayload("", opened.port()));
+        }
+      }
+    }
+  }
+
+  private void stop() {
+    if (tcp == null) {
+      return;
+    }
+    ChatNative.pipelineFor(server).removeSink(sink);
+    tcp.close();
+    tcp = null;
+    sink = null;
+  }
+}
