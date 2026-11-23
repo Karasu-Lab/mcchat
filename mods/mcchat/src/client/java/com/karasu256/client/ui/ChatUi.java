@@ -119,8 +119,7 @@ public final class ChatUi {
       if (!(cached.rows().get(i) instanceof MessageRow row)) {
         continue;
       }
-      if (inside(
-          x, y, m.listPadH, origin + cached.tops()[i] + row.avatarY(), m.avatar, m.avatar)) {
+      if (inside(x, y, m.listPadH, origin + cached.tops()[i] + row.avatarY(), m.avatar, m.avatar)) {
         g.renderComponentTooltip(font, senderTooltip(row.message().sender()), mouseX, mouseY);
         return;
       }
