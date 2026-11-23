@@ -21,7 +21,8 @@ public final class ServerChatTextProcessor {
 
   public static ChatText received(ServerPlayer sender, String rawText, MinecraftServer server) {
     ChatText held = HELD_CHAT_TEXTS.remove(sender.getUUID());
-    ChatText chatText = held != null && held.plain().equals(rawText) ? held : parse(rawText, server);
+    ChatText chatText =
+        held != null && held.plain().equals(rawText) ? held : parse(rawText, server);
     return chatText.withoutReplyUnless(ChatNative.pipelineFor(server)::hasMessage);
   }
 
