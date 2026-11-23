@@ -4,18 +4,18 @@ import com.google.gson.JsonObject;
 import java.util.Objects;
 
 public final class WorldData {
-  private final String host;
+  private final String id;
   private final String worldName;
   private final WorldContext context;
 
-  public WorldData(String host, String worldName, WorldContext context) {
-    this.host = host;
+  public WorldData(String id, String worldName, WorldContext context) {
+    this.id = id;
     this.worldName = worldName;
     this.context = context;
   }
 
-  public String host() {
-    return host;
+  public String id() {
+    return id;
   }
 
   public String worldName() {
@@ -26,12 +26,12 @@ public final class WorldData {
     return context;
   }
 
-  public static WorldData empty(String host, String worldName) {
-    return new WorldData(host, worldName, WorldContext.EMPTY);
+  public static WorldData empty(String id, String worldName) {
+    return new WorldData(id, worldName, WorldContext.EMPTY);
   }
 
   public WorldData withContext(WorldContext next) {
-    return new WorldData(host, worldName, next);
+    return new WorldData(id, worldName, next);
   }
 
   public WorldData withoutContext() {
@@ -40,7 +40,7 @@ public final class WorldData {
 
   JsonObject toJson() {
     JsonObject json = new JsonObject();
-    json.addProperty("host", host);
+    json.addProperty("id", id);
     json.addProperty("worldName", worldName);
     if (!context.equals(WorldContext.EMPTY)) {
       json.add("context", context.toJson());
@@ -50,7 +50,7 @@ public final class WorldData {
 
   static WorldData fromJson(JsonObject json) {
     return new WorldData(
-        json.get("host").getAsString(),
+        json.get("id").getAsString(),
         json.get("worldName").getAsString(),
         json.has("context")
             ? WorldContext.fromJson(json.getAsJsonObject("context"))
@@ -60,13 +60,13 @@ public final class WorldData {
   @Override
   public boolean equals(Object o) {
     return o instanceof WorldData
-        && host.equals(((WorldData) o).host)
+        && id.equals(((WorldData) o).id)
         && worldName.equals(((WorldData) o).worldName)
         && context.equals(((WorldData) o).context);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(host, worldName, context);
+    return Objects.hash(id, worldName, context);
   }
 }

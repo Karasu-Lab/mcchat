@@ -74,7 +74,7 @@ public class ChatNative implements ModInitializer {
 
   private static void startDedicatedCapture(MinecraftServer server) {
     dedicatedPipeline = new CapturePipeline();
-    dedicatedPipeline.reset("", server.getMotd(), Origin.SERVER);
+    dedicatedPipeline.reset(server.getWorldData().getLevelName(), server.getMotd(), Origin.SERVER);
     dedicatedPipeline.setOnline(true, null);
     dedicatedServer = openServerPort(dedicatedPipeline);
   }
