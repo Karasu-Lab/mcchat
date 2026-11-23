@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/Karasu-Lab/mcchat/compare/mcchat-native-v1.5.0...mcchat-native-v1.6.0) (2026-11-23)
+
+
+### Features
+
+* port the screen state, world icon and event class design to main ([7e8f666](https://github.com/Karasu-Lab/mcchat/commit/7e8f66623ddf4a8a60efe1f714778355bba53f7c))
+
 ## [1.5.0](https://github.com/Karasu-Lab/mcchat/compare/mcchat-native-v1.4.0...mcchat-native-v1.5.0) (2026-11-23)
 
 
