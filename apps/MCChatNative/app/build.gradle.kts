@@ -18,7 +18,8 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.datastore)
+    implementation(project(":common"))
+    implementation(libs.androidx.datastore.okio)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.compose.destinations.core)
     ksp(libs.compose.destinations.ksp)

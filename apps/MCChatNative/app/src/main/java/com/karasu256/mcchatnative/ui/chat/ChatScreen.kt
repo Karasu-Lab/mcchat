@@ -3,41 +3,46 @@ package com.karasu256.mcchatnative.ui.chat
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -46,28 +51,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -75,30 +78,42 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -106,19 +121,22 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.karasu256.mcchatnative.R
 import com.karasu256.mcchatnative.model.ChatMessage
-import com.karasu256.mcchatnative.model.ChatUser
 import com.karasu256.mcchatnative.model.MessageReaction
 import com.karasu256.mcchatnative.model.ReactionData
+import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
 import com.karasu256.mcchatnative.ui.PageTransitions
+import com.karasu256.mcchatnative.ui.StatusDot
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Date
+import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
-private enum class ChatItemType { Message, Typing }
 
 private const val RowEnterMillis = 250
 private const val RowExitMillis = 200
@@ -146,6 +164,7 @@ private const val FlashOutMillis = 300
 private const val ScrollMillis = 400
 private const val ReplyPreviewLimit = 20
 private val ReplyAvatarSize = 20.dp
+private val BubbleMaxWidth = 260.dp
 private const val DotCycleMillis = 1_200
 private const val DotStagger = 0.15f
 
@@ -169,6 +188,7 @@ fun ChatScreen(
         onReplyToggle = viewModel::onReplyToggle,
         onReplyCancel = viewModel::onReplyCancel,
         onMentionToggle = viewModel::onMentionToggle,
+        onClearHistory = viewModel::clearHistory,
     )
 }
 
@@ -183,11 +203,20 @@ private fun ChatContent(
     onReplyToggle: (Long) -> Unit,
     onReplyCancel: () -> Unit,
     onMentionToggle: () -> Unit,
+    onClearHistory: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.client?.name.orEmpty()) },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(state.client?.name.orEmpty())
+                        StatusDot(isOnline = state.client?.isOnline == true)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -198,6 +227,7 @@ private fun ChatContent(
                 },
                 actions = {
                     ActiveUsersAction(headerUsers = state.headerUsers, allUsers = state.activeUsers)
+                    ChatMenuAction(onClearHistory = onClearHistory)
                 },
             )
         },
@@ -227,23 +257,11 @@ private fun ChatContent(
     }
 }
 
-private suspend fun LazyListState.animateScrollToItemEased(index: Int) {
-    val spec = tween<Float>(ScrollMillis, easing = FastOutSlowInEasing)
-    if (layoutInfo.visibleItemsInfo.none { it.index == index }) {
-        val visible = layoutInfo.visibleItemsInfo
-        if (visible.isEmpty()) return
-        val averageSize = visible.map { it.size }.average().toFloat() + layoutInfo.mainAxisItemSpacing
-        animateScrollBy((index - firstVisibleItemIndex) * averageSize, spec)
-    }
-    val item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return
-    animateScrollBy(item.offset.toFloat(), spec)
-}
-
 @Composable
 private fun MessageList(
     messages: List<ChatMessage>,
     currentUserId: UserId,
-    typingUsers: List<ChatUser>,
+    typingUsers: List<User>,
     reactions: List<ReactionData>,
     onReact: (Long, ReactionData) -> Unit,
     onReplyToggle: (Long) -> Unit,
@@ -251,7 +269,7 @@ private fun MessageList(
 ) {
     if (messages.isEmpty() && typingUsers.isEmpty()) {
         Column(
-            modifier = modifier.fillMaxSize(),
+            modifier = modifier.fillMaxSize().clearFocusOnTap(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -264,61 +282,137 @@ private fun MessageList(
         return
     }
 
-    val seenIds = remember { messages.mapTo(HashSet()) { it.id } }
+    val seenIds = remember { HashSet<Long>() }
+    val isFirstBatch = remember { booleanArrayOf(true) }
+    if (isFirstBatch[0] && messages.isNotEmpty()) {
+        messages.forEach { seenIds.add(it.id) }
+        isFirstBatch[0] = false
+    }
     val messagesById = remember(messages) { messages.associateBy { it.id } }
-    val listState = rememberLazyListState()
+    val scroll = rememberScrollState()
     val scope = rememberCoroutineScope()
+    var viewportHeight by remember { mutableIntStateOf(0) }
+    val heights = remember { mutableStateMapOf<Long, Int>() }
+    val tops = remember { mutableStateMapOf<Long, Int>() }
     var flash by remember { mutableStateOf<FlashRequest?>(null) }
-    LaunchedEffect(listState) {
+    LaunchedEffect(scroll) {
         var previousHeight = 0
         var wasAtBottom = true
-        snapshotFlow { listState.layoutInfo.viewportSize.height to !listState.canScrollForward }
+        snapshotFlow { viewportHeight to !scroll.canScrollForward }
             .collect { (height, atBottom) ->
                 if (previousHeight != 0 && height < previousHeight && wasAtBottom) {
-                    listState.scrollBy((previousHeight - height).toFloat())
+                    scroll.scrollBy((previousHeight - height).toFloat())
                 }
                 wasAtBottom = atBottom
                 previousHeight = height
             }
     }
+    var initialScrollDone by remember { mutableStateOf(false) }
     LaunchedEffect(messages.size, typingUsers.isNotEmpty()) {
-        listState.animateScrollToItem(messages.size)
+        if (initialScrollDone) {
+            scroll.animateScrollTo(scroll.maxValue)
+        } else {
+            snapshotFlow { scroll.maxValue }.first { it > 0 }
+            scroll.scrollTo(scroll.maxValue)
+            initialScrollDone = true
+        }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .clearFocusOnTap()
+            .onSizeChanged { viewportHeight = it.height }
+            .verticalScroll(scroll)
+            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(messages, key = { it.id }, contentType = { ChatItemType.Message }) { message ->
-            val animateEnter = message.id !in seenIds
-            SideEffect { seenIds.add(message.id) }
-            MessageRow(
-                message = message,
-                currentUserId = currentUserId,
-                replyTarget = message.replyId?.let(messagesById::get),
-                animateEnter = animateEnter,
-                reactions = reactions,
-                onReact = { onReact(message.id, it) },
-                onReply = { onReplyToggle(message.id) },
-                flash = flash?.takeIf { it.messageId == message.id },
-                onReplyClick = {
-                    message.replyId?.let { targetId ->
-                        val index = messages.indexOfFirst { it.id == targetId }
-                        if (index >= 0) {
-                            scope.launch {
-                                listState.animateScrollToItemEased(index)
-                                flash = FlashRequest(targetId, (flash?.nonce ?: 0) + 1)
-                            }
-                        }
+        Spacer(Modifier.height(0.dp))
+        messages.forEach { message ->
+            key(message.id) {
+                val animateEnter = message.id !in seenIds
+                SideEffect { seenIds.add(message.id) }
+                ViewportItem(
+                    id = message.id,
+                    scroll = scroll,
+                    viewportHeight = viewportHeight,
+                    heights = heights,
+                    tops = tops,
+                ) {
+                    message.world?.let { world ->
+                        WorldDivider(world)
+                        return@ViewportItem
                     }
-                },
-                modifier = Modifier.animateItem(),
-            )
+                    MessageRow(
+                        message = message,
+                        currentUserId = currentUserId,
+                        replyTarget = message.replyId?.let(messagesById::get),
+                        animateEnter = animateEnter,
+                        reactions = reactions,
+                        onReact = { onReact(message.id, it) },
+                        onReply = { onReplyToggle(message.id) },
+                        flash = flash?.takeIf { it.messageId == message.id },
+                        onReplyClick = {
+                            message.replyId?.let { targetId ->
+                                tops[targetId]?.let { top ->
+                                    scope.launch {
+                                        scroll.animateScrollTo(top, tween(ScrollMillis, easing = FastOutSlowInEasing))
+                                        flash = FlashRequest(targetId, (flash?.nonce ?: 0) + 1)
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+            }
         }
-        item(key = ChatItemType.Typing, contentType = ChatItemType.Typing) {
+        ViewportItem(
+            id = Long.MIN_VALUE,
+            scroll = scroll,
+            viewportHeight = viewportHeight,
+            heights = heights,
+            tops = tops,
+        ) {
             TypingRow(typingUsers)
+        }
+        Spacer(Modifier.height(0.dp))
+    }
+}
+
+@Composable
+private fun Modifier.clearFocusOnTap(): Modifier {
+    val focusManager = LocalFocusManager.current
+    return pointerInput(focusManager) { detectTapGestures { focusManager.clearFocus() } }
+}
+
+@Composable
+private fun ViewportItem(
+    id: Long,
+    scroll: ScrollState,
+    viewportHeight: Int,
+    heights: SnapshotStateMap<Long, Int>,
+    tops: SnapshotStateMap<Long, Int>,
+    content: @Composable () -> Unit,
+) {
+    val currentViewportHeight by rememberUpdatedState(viewportHeight)
+    val visible by remember {
+        derivedStateOf {
+            val height = heights[id] ?: return@derivedStateOf true
+            val top = tops[id] ?: return@derivedStateOf true
+            top + height > scroll.value && top < scroll.value + currentViewportHeight
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onGloballyPositioned { tops[id] = it.positionInParent().y.roundToInt() },
+    ) {
+        if (visible) {
+            Box(modifier = Modifier.onSizeChanged { heights[id] = it.height }) {
+                content()
+            }
+        } else {
+            Spacer(Modifier.height(with(LocalDensity.current) { (heights[id] ?: 0).toDp() }))
         }
     }
 }
@@ -378,16 +472,18 @@ private fun MessageRowContent(
     onReplyClick: () -> Unit,
     flashAlpha: () -> Float,
 ) {
+    val bias = animatedOwnBias(isOwn)
+    val inset by animateDpAsState(if (isOwn) 0.dp else AvatarSize + 8.dp, tween(OwnershipMillis))
     Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = if (isOwn) Alignment.End else Alignment.Start,
+        horizontalAlignment = BiasAlignment.Horizontal(bias),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (replyTarget != null) {
             ReplyContainer(
                 target = replyTarget,
                 onClick = onReplyClick,
-                modifier = Modifier.padding(start = if (isOwn) 0.dp else AvatarSize + 8.dp),
+                modifier = Modifier.padding(start = inset),
             )
         }
         MessageLine(message, isOwn, isMentioned, currentUserId, reactions, onReact, flashAlpha)
@@ -396,7 +492,7 @@ private fun MessageRowContent(
                 reactions = message.reactions,
                 currentUserId = currentUserId,
                 onReact = onReact,
-                modifier = Modifier.padding(start = if (isOwn) 0.dp else AvatarSize + 8.dp),
+                modifier = Modifier.padding(start = inset),
             )
         }
     }
@@ -446,28 +542,47 @@ private fun MessageLine(
     val haptics = LocalHapticFeedback.current
     val time = DateFormat.getTimeFormat(LocalContext.current).format(Date(message.timestampMillis))
     val colors = MaterialTheme.colorScheme
-    val containerColor = when {
-        isMentioned -> colors.secondaryContainer
-        isOwn -> colors.primaryContainer
-        else -> colors.surfaceContainerHigh
-    }
-    val contentColor = when {
-        isMentioned -> colors.onSecondaryContainer
-        isOwn -> colors.onPrimaryContainer
-        else -> colors.onSurface
-    }
+    val containerColor by animateColorAsState(
+        when {
+            isMentioned -> colors.secondaryContainer
+            isOwn -> colors.primaryContainer
+            else -> colors.surfaceContainerHigh
+        },
+        tween(OwnershipMillis),
+    )
+    val contentColor by animateColorAsState(
+        when {
+            isMentioned -> colors.onSecondaryContainer
+            isOwn -> colors.onPrimaryContainer
+            else -> colors.onSurface
+        },
+        tween(OwnershipMillis),
+    )
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
+        horizontalArrangement = Arrangement.aligned(BiasAlignment.Horizontal(animatedOwnBias(isOwn))),
         verticalAlignment = Alignment.Bottom,
     ) {
-        if (isOwn) {
-            MessageTime(time)
-            Spacer(Modifier.width(8.dp))
-        } else {
-            UserAvatar(message.sender.name)
-            Spacer(Modifier.width(8.dp))
+        AnimatedVisibility(
+            visible = isOwn,
+            enter = fadeIn(tween(OwnershipMillis)) + expandHorizontally(tween(OwnershipMillis)),
+            exit = fadeOut(tween(OwnershipMillis)) + shrinkHorizontally(tween(OwnershipMillis)),
+        ) {
+            Row {
+                MessageTime(time)
+                Spacer(Modifier.width(8.dp))
+            }
+        }
+        AnimatedVisibility(
+            visible = !isOwn,
+            enter = fadeIn(tween(OwnershipMillis)) + expandHorizontally(tween(OwnershipMillis)),
+            exit = fadeOut(tween(OwnershipMillis)) + shrinkHorizontally(tween(OwnershipMillis)),
+        ) {
+            Row {
+                UserAvatar(message.sender)
+                Spacer(Modifier.width(8.dp))
+            }
         }
         Box {
             Surface(
@@ -475,7 +590,7 @@ private fun MessageLine(
                 color = containerColor,
                 contentColor = contentColor,
                 modifier = Modifier
-                    .widthIn(max = 260.dp)
+                    .widthIn(max = BubbleMaxWidth)
                     .clip(MaterialTheme.shapes.large)
                     .drawWithContent {
                         drawContent()
@@ -490,11 +605,15 @@ private fun MessageLine(
                     ),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    if (!isOwn) {
+                    AnimatedVisibility(
+                        visible = !isOwn,
+                        enter = fadeIn(tween(OwnershipMillis)) + expandVertically(tween(OwnershipMillis)),
+                        exit = fadeOut(tween(OwnershipMillis)) + shrinkVertically(tween(OwnershipMillis)),
+                    ) {
                         Text(
                             text = message.sender.name,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                     Text(message.body, style = MaterialTheme.typography.bodyLarge)
@@ -511,12 +630,24 @@ private fun MessageLine(
                 onDismissRequest = { pickerVisible = false },
             )
         }
-        if (!isOwn) {
-            Spacer(Modifier.width(8.dp))
-            MessageTime(time)
+        AnimatedVisibility(
+            visible = !isOwn,
+            enter = fadeIn(tween(OwnershipMillis)) + expandHorizontally(tween(OwnershipMillis)),
+            exit = fadeOut(tween(OwnershipMillis)) + shrinkHorizontally(tween(OwnershipMillis)),
+        ) {
+            Row {
+                Spacer(Modifier.width(8.dp))
+                MessageTime(time)
+            }
         }
     }
 }
+
+private const val OwnershipMillis = 300
+
+@Composable
+private fun animatedOwnBias(isOwn: Boolean): Float =
+    animateFloatAsState(if (isOwn) 1f else -1f, tween(OwnershipMillis)).value
 
 @Composable
 private fun ReplyContainer(target: ChatMessage, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -525,7 +656,7 @@ private fun ReplyContainer(target: ChatMessage, onClick: () -> Unit, modifier: M
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.widthIn(max = 260.dp),
+        modifier = modifier.widthIn(max = BubbleMaxWidth),
     ) {
         ReplyQuote(target, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
     }
@@ -533,7 +664,7 @@ private fun ReplyContainer(target: ChatMessage, onClick: () -> Unit, modifier: M
 
 @Composable
 private fun ReplyQuote(target: ChatMessage, modifier: Modifier = Modifier) {
-    val nameColor = MaterialTheme.colorScheme.onSurface
+    val nameColor = MaterialTheme.colorScheme.primary
     val text = remember(target, nameColor) {
         buildAnnotatedString {
             withStyle(SpanStyle(color = nameColor, fontWeight = FontWeight.Medium)) {
@@ -549,7 +680,7 @@ private fun ReplyQuote(target: ChatMessage, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        UserAvatar(target.sender.name, size = ReplyAvatarSize)
+        UserAvatar(target.sender, size = ReplyAvatarSize)
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
@@ -579,14 +710,14 @@ private fun MessageTime(time: String) {
     )
 }
 
-private data class TypingEntry(val user: ChatUser, val animateEnter: Boolean)
+private data class TypingEntry(val user: User, val animateEnter: Boolean)
 
 @Composable
-private fun TypingRow(users: List<ChatUser>, modifier: Modifier = Modifier) {
+private fun TypingRow(users: List<User>, modifier: Modifier = Modifier) {
     var roster by remember { mutableStateOf(users.map { TypingEntry(it, animateEnter = false) }) }
     LaunchedEffect(users) {
         if (users.isEmpty()) {
-            delay(RowExitMillis.toLong())
+            delay(RowExitMillis.toLong().milliseconds)
             roster = emptyList()
         } else {
             val known = roster.mapTo(HashSet()) { it.user.id }
@@ -606,7 +737,7 @@ private fun TypingRow(users: List<ChatUser>, modifier: Modifier = Modifier) {
                     roster.forEach { entry ->
                         key(entry.user.id) {
                             TypingAvatar(
-                                name = entry.user.name,
+                                user = entry.user,
                                 visible = users.any { it.id == entry.user.id } || users.isEmpty(),
                                 animateEnter = entry.animateEnter,
                                 onGone = { roster = roster.filter { it.user.id != entry.user.id } },
@@ -628,7 +759,7 @@ private fun TypingRow(users: List<ChatUser>, modifier: Modifier = Modifier) {
 
 @Composable
 private fun TypingAvatar(
-    name: String,
+    user: User,
     visible: Boolean,
     animateEnter: Boolean,
     onGone: () -> Unit,
@@ -641,12 +772,12 @@ private fun TypingAvatar(
         enter = slideInHorizontally(tween(AvatarEnterMillis)) { -it } + fadeIn(tween(AvatarEnterMillis)),
         exit = scaleOut(tween(AvatarExitMillis), targetScale = 0.6f) + fadeOut(tween(AvatarExitMillis)),
     ) {
-        UserAvatar(name, ringColor = MaterialTheme.colorScheme.surface)
+        UserAvatar(user, ringColor = MaterialTheme.colorScheme.surface)
     }
 
     LaunchedEffect(visible) {
         if (!visible) {
-            delay(AvatarExitMillis.toLong())
+            delay(AvatarExitMillis.toLong().milliseconds)
             onGone()
         }
     }
@@ -737,7 +868,23 @@ private fun MessageInput(
                     keyboardActions = KeyboardActions(onSend = { onSend() }),
                     modifier = Modifier.weight(1f),
                 )
-                FilledIconButton(onClick = onSend, enabled = canSend) {
+                val defaultColors = IconButtonDefaults.filledIconButtonColors()
+                val sendContainer by animateColorAsState(
+                    if (canSend) defaultColors.containerColor else defaultColors.disabledContainerColor,
+                )
+                val sendContent by animateColorAsState(
+                    if (canSend) defaultColors.contentColor else defaultColors.disabledContentColor,
+                )
+                FilledIconButton(
+                    onClick = onSend,
+                    enabled = canSend,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = sendContainer,
+                        contentColor = sendContent,
+                        disabledContainerColor = sendContainer,
+                        disabledContentColor = sendContent,
+                    ),
+                ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = stringResource(R.string.chat_send),

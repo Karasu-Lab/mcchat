@@ -3,11 +3,12 @@ package com.karasu256.client;
 import com.google.common.net.HostAndPort;
 import com.karasu256.ChatNative;
 import com.karasu256.capture.CapturePipeline;
-import com.karasu256.capture.CapturedData;
-import com.karasu256.capture.CapturedData.Kind;
-import com.karasu256.capture.CapturedPacket;
-import com.karasu256.capture.Origin;
+import com.karasu256.capture.ServerCapture;
 import com.karasu256.client.capture.ClientCapture;
+import com.karasu256.mcchat.common.CapturedData;
+import com.karasu256.mcchat.common.CapturedData.Kind;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.Origin;
 import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.TCPServer;
 import com.karasu256.net.TCPSink;
@@ -28,12 +29,14 @@ public class ChatNativeClient implements ClientModInitializer {
   public void onInitializeClient() {
     CapturePipeline pipeline = ChatNative.pipeline();
     ClientCapture.register();
+    pipeline.setOnline(false, ClientCapture.sessionPlayer());
 
     int port = ChatNative.config().clientPort;
     tcp = new TCPServer(pipeline::snapshot, this::receive);
     try {
       tcp.start(port);
       pipeline.addSink(new TCPSink(tcp));
+      ClientCapture.setUpstream(tcp::sendUpstream);
     } catch (IOException e) {
       ChatNative.LOGGER.error("Failed to open TCP port {}", port, e);
       tcp = null;
@@ -44,8 +47,12 @@ public class ChatNativeClient implements ClientModInitializer {
         tcp.disconnectUpstream();
       }
       resetWorld(pipeline, client);
+      pipeline.setOnline(true, ClientCapture.sessionPlayer());
       ClientCapture.submitPlayerList(client);
     });
+
+    ClientPlayConnectionEvents.DISCONNECT.register(
+        (handler, client) -> pipeline.setOnline(false, ClientCapture.sessionPlayer()));
 
     ClientPlayNetworking.registerGlobalReceiver(
         CaptureEndpointPayload.TYPE,
@@ -63,6 +70,9 @@ public class ChatNativeClient implements ClientModInitializer {
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
       pipeline.reset("localhost", local.getWorldData().getLevelName(), Origin.SERVER);
+      local.execute(() ->
+          pipeline.submit(
+              CapturedData.playerList(Origin.SERVER, ServerCapture.onlinePlayers(local))));
       return;
     }
     ServerData server = client.getCurrentServer();
@@ -84,6 +94,10 @@ public class ChatNativeClient implements ClientModInitializer {
 
   private void receive(CapturedPacket packet) {
     CapturePipeline pipeline = ChatNative.pipeline();
+    if (packet.type() == CapturedPacket.Type.PING) {
+      pipeline.requestStatus();
+      return;
+    }
     if (packet.authority() == Origin.SERVER) {
       switch (packet.type()) {
         case SNAPSHOT ->
@@ -91,7 +105,7 @@ public class ChatNativeClient implements ClientModInitializer {
         case EVENT ->
             packet
                 .data()
-                .filter(data -> data.kind() != Kind.COMMAND_EXECUTED)
+                .filter(data -> data.kind() != Kind.COMMAND_EXECUTED && !isOwnTyping(data))
                 .ifPresent(pipeline::submit);
         case RESET -> {}
       }
@@ -101,11 +115,19 @@ public class ChatNativeClient implements ClientModInitializer {
       return;
     }
     CapturedData data = packet.data().get();
+    Minecraft client = Minecraft.getInstance();
+    if (client.player == null || client.getConnection() == null) {
+      return;
+    }
+    if (data.kind() == Kind.TYPING_STARTED || data.kind() == Kind.TYPING_STOPPED) {
+      boolean started = data.kind() == Kind.TYPING_STARTED;
+      client.execute(() -> ClientCapture.relayTyping(started));
+      return;
+    }
     String text = data.content().orElse("");
     if (text.isBlank()) {
       return;
     }
-    Minecraft client = Minecraft.getInstance();
     switch (data.kind()) {
       case CHAT_SENT -> client.execute(() -> withConnection(client, c -> c.sendChat(text)));
       case COMMAND_SENT ->
@@ -114,6 +136,15 @@ public class ChatNativeClient implements ClientModInitializer {
                   client, c -> c.sendCommand(text.startsWith("/") ? text.substring(1) : text)));
       default -> {}
     }
+  }
+
+  private static boolean isOwnTyping(CapturedData data) {
+    if (data.kind() != Kind.TYPING_STARTED && data.kind() != Kind.TYPING_STOPPED) {
+      return false;
+    }
+    Minecraft client = Minecraft.getInstance();
+    return client.player != null
+        && data.player().filter(p -> p.uuid().equals(client.player.getUUID())).isPresent();
   }
 
   private static void withConnection(

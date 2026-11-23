@@ -1,6 +1,12 @@
 package com.karasu256.capture;
 
 import com.karasu256.ChatNative;
+import com.karasu256.mcchat.common.CapturedData;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.PlayerRef;
+import com.karasu256.mcchat.common.WorldContext;
+import com.karasu256.mcchat.common.WorldData;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -14,6 +20,8 @@ public final class CapturePipeline implements AutoCloseable {
 
   private volatile WorldData world = WorldData.empty("", "");
   private volatile Origin authority = Origin.CLIENT;
+  private volatile boolean online;
+  private volatile PlayerRef player;
   private volatile boolean running = true;
 
   public CapturePipeline() {
@@ -30,7 +38,22 @@ public final class CapturePipeline implements AutoCloseable {
   }
 
   public CapturedPacket snapshot() {
-    return new CapturedPacket(CapturedPacket.Type.SNAPSHOT, authority, world, Optional.empty());
+    WorldData current = world;
+    WorldContext context = current.context();
+    WorldContext withSkins =
+        new WorldContext(SkinResolver.attachAll(context.players()), context.history());
+    return new CapturedPacket(
+        CapturedPacket.Type.SNAPSHOT, authority, current.withContext(withSkins), Optional.empty());
+  }
+
+  public void republishPlayers() {
+    enqueue(() ->
+        emit(
+            CapturedPacket.event(
+                authority,
+                world,
+                CapturedData.playerList(
+                    authority, SkinResolver.attachAll(world.context().players())))));
   }
 
   public void submit(CapturedData data) {
@@ -50,6 +73,30 @@ public final class CapturePipeline implements AutoCloseable {
       world = world.withContext(context);
       emit(new CapturedPacket(CapturedPacket.Type.SNAPSHOT, authority, world, Optional.empty()));
     });
+  }
+
+  public void publish(CapturedData data) {
+    enqueue(() -> emit(CapturedPacket.event(authority, world, data)));
+  }
+
+  public void setOnline(boolean value, PlayerRef who) {
+    enqueue(() -> {
+      online = value;
+      player = who;
+      emit(status());
+    });
+  }
+
+  public void requestStatus() {
+    enqueue(() -> emit(status()));
+  }
+
+  private CapturedPacket status() {
+    CapturedData state =
+        CapturedData.of(
+            authority, online ? CapturedData.Kind.ONLINE : CapturedData.Kind.OFFLINE, player, null);
+    return new CapturedPacket(
+        CapturedPacket.Type.STATUS, authority, world.withoutContext(), Optional.of(state));
   }
 
   public void setAuthority(Origin newAuthority) {
@@ -75,10 +122,11 @@ public final class CapturePipeline implements AutoCloseable {
     }
   }
 
-  private void process(CapturedData data) {
-    if (data.origin() != authority) {
+  private void process(CapturedData captured) {
+    if (captured.origin() != authority) {
       return;
     }
+    CapturedData data = SkinResolver.attach(captured);
     WorldData current = world;
     world = current.withContext(current.context().apply(data, 100));
     emit(CapturedPacket.event(authority, world, data));

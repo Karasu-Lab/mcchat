@@ -4,7 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.karasu256.capture.CapturedData.Kind;
+import com.karasu256.mcchat.common.CapturedData;
+import com.karasu256.mcchat.common.CapturedData.Kind;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.PlayerRef;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

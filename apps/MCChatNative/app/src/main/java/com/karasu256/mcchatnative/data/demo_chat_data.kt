@@ -2,7 +2,7 @@ package com.karasu256.mcchatnative.data
 
 import com.karasu256.mcchatnative.model.ChatEvent
 import com.karasu256.mcchatnative.model.ChatMessage
-import com.karasu256.mcchatnative.model.ChatUser
+import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.ReactionIntent
 import com.karasu256.mcchatnative.model.Reactions
 import com.karasu256.mcchatnative.model.UserId
@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.transform
 
 private const val StepIntervalMillis = 2_000L
 
-private fun demoUser(name: String) = ChatUser(UserId("demo-${name.lowercase()}"), name)
+private fun demoUser(name: String) = User(UserId("demo-${name.lowercase()}"), name)
 
 private val Alex = demoUser("Alex")
 private val Sam = demoUser("Sam")
@@ -27,16 +27,16 @@ private val demoReactions = Reactions.generate()
 
 private fun message(
     id: Long,
-    sender: ChatUser,
+    sender: User,
     body: String,
     replyId: Long? = null,
     isReply: Boolean = false,
 ): ChatEvent = ChatEvent.Message(id, sender, body, replyId, isReply)
 
-private fun typing(user: ChatUser, isTyping: Boolean): ChatEvent =
+private fun typing(user: User, isTyping: Boolean): ChatEvent =
     ChatEvent.Typing(user, isTyping)
 
-private fun reaction(messageId: Long, reactionIndex: Int, user: ChatUser, isAdded: Boolean): ChatEvent =
+private fun reaction(messageId: Long, reactionIndex: Int, user: User, isAdded: Boolean): ChatEvent =
     ChatEvent.Reaction(ReactionIntent(messageId, demoReactions[reactionIndex], user.id, isAdded))
 
 private val demoSteps: List<List<ChatEvent>> = listOf(
@@ -77,7 +77,7 @@ object DemoChatEventSource : ChatEventSource {
     private val sent = MutableSharedFlow<ChatMessage>(extraBufferCapacity = 8)
     private var nextReplyId = FirstDemoReplyId
 
-    override fun activeUsers(clientId: String): Flow<List<ChatUser>> = flowOf(demoActiveUsers)
+    override fun activeUsers(clientId: String): Flow<List<User>> = flowOf(demoActiveUsers)
 
     override suspend fun send(clientId: String, message: ChatMessage) {
         sent.emit(message)

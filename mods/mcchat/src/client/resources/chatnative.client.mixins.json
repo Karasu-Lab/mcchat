@@ -3,6 +3,7 @@
 	"package": "com.karasu256.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
+		"ChatScreenMixin",
 		"ClientPacketListenerMixin"
 	],
 	"injectors": {

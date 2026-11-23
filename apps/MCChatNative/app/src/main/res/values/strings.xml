@@ -15,9 +15,27 @@
     <string name="chat_active_users">アクティブなユーザー</string>
     <string name="chat_reply_cancel">返信を取り消す</string>
     <string name="chat_reply_mention">返信の通知</string>
+    <string name="chat_world_entered">%1$s に参加しました</string>
+    <string name="chat_world_changed">ワールドを変更しました</string>
+    <string name="chat_menu">メニュー</string>
+    <string name="chat_clear_history">履歴を削除</string>
+    <string name="chat_clear_history_message">このチャットの履歴をすべて削除します。この操作は取り消せません。</string>
+    <string name="chat_clear_history_confirm">削除</string>
     <string name="drawer_threads">スレッド</string>
     <string name="drawer_pinned">ピン留め</string>
     <string name="drawer_recent">最近</string>
     <string name="thread_pin">ピン留めする</string>
     <string name="thread_unpin">ピン留めを解除</string>
+    <string name="connection_add">接続を追加</string>
+    <string name="connection_host">クライアントまたはサーバーのホスト</string>
+    <string name="connection_host_hint">host または host:port</string>
+    <string name="connection_confirm">接続して追加</string>
+    <string name="connection_remove">接続を削除</string>
+    <string name="connection_remove_message">%1$s を削除しますか?</string>
+    <string name="connection_remove_confirm">削除</string>
+    <string name="connection_checking">接続を確認しています…</string>
+    <string name="connection_failed">接続できませんでした。ホストとポートを確認してください</string>
+    <string name="connection_cancel">キャンセル</string>
+    <string name="connection_channel_name">接続</string>
+    <string name="connection_notification_title">Minecraft と接続中</string>
 </resources>
