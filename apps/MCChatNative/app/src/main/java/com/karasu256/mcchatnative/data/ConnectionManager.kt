@@ -10,6 +10,7 @@ import com.karasu256.mcchatnative.model.Client
 import com.karasu256.mcchatnative.model.ConnectionInfo
 import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
+import com.karasu256.mcchatnative.model.World
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +47,7 @@ object ConnectionManager {
     private val online = MutableStateFlow<Set<String>>(emptySet())
     private val inWorld = MutableStateFlow<Set<String>>(emptySet())
     private val selves = MutableStateFlow<Map<String, User>>(emptyMap())
+    private val requestedSkins = ConcurrentHashMap.newKeySet<String>()
     private val ping = CapturedPacket(CapturedPacket.Type.PING, Origin.CLIENT, WorldData.empty("", ""), Optional.empty())
     private var store: ConnectionStore? = null
 
@@ -58,6 +60,7 @@ object ConnectionManager {
         if (store != null) return
         SkinCache.init(context)
         ChatHistoryStore.init(context)
+        WorldRegistry.init(context)
         val connectionStore = ConnectionStore(context)
         store = connectionStore
         scope.launch {
@@ -159,6 +162,9 @@ object ConnectionManager {
 
     private fun receive(clientId: String, line: String) {
         val packet = CapturedPacket.decode(line).orElse(null) ?: return
+        if (packet.world().id().isNotEmpty()) {
+            WorldRegistry.register(World(packet.world().id(), packet.world().worldName()))
+        }
         if (packet.type() == CapturedPacket.Type.STATUS) {
             val data = packet.data().orElse(null)
             inWorld.update { if (data?.kind() == CapturedData.Kind.ONLINE) it + clientId else it - clientId }
@@ -177,13 +183,21 @@ object ConnectionManager {
 
     private fun cacheSkins(packet: CapturedPacket) {
         val data = packet.data().orElse(null)
+        val worldEvent = data?.kind() == CapturedData.Kind.PLAYER_JOINED || data?.kind() == CapturedData.Kind.PLAYER_LEFT
         val players = packet.world().context().players() +
             data?.players().orEmpty() +
-            listOfNotNull(data?.player()?.orElse(null))
+            listOfNotNull(data?.player()?.orElse(null)?.takeIf { worldEvent })
         players.forEach { cacheSkin(it) }
     }
 
     private fun cacheSkin(player: PlayerRef) {
-        player.skin().ifPresent { SkinCache.put(player.uuid().toString(), it.png()) }
+        val id = player.uuid().toString()
+        val skin = player.skin().orElse(null)
+        if (skin != null) {
+            SkinCache.put(id, skin.png())
+        } else if (SkinCache.get(id) == null && requestedSkins.add(id)) {
+            scope.launch { MojangSkinFetcher.fetch(id)?.let { SkinCache.put(id, it) } }
+                .invokeOnCompletion { if (it != null) requestedSkins.remove(id) }
+        }
     }
 }

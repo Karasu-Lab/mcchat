@@ -16,6 +16,7 @@ import com.karasu256.mcchatnative.model.ReactionData
 import com.karasu256.mcchatnative.model.ReactionIntent
 import com.karasu256.mcchatnative.model.Reactions
 import com.karasu256.mcchatnative.model.UserId
+import com.karasu256.mcchatnative.model.World
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -130,6 +131,7 @@ class ChatViewModel(
                 when (event) {
                     is ChatEvent.Message ->
                         receiveMessage(event.id, event.sender, event.body, event.replyId, event.isReply, event.timestampMillis)
+                    is ChatEvent.WorldChanged -> receiveWorldChange(event.id, event.world, event.timestampMillis)
                     is ChatEvent.Typing -> receiveTyping(event.user, event.isTyping)
                     is ChatEvent.Reaction -> receiveReaction(event.intent)
                 }
@@ -228,6 +230,25 @@ class ChatViewModel(
                 it
             } else {
                 it.copy(messages = it.messages + newMessage(id, sender, body, replyId, isReply, timestampMillis))
+            }
+        }
+    }
+
+    private fun receiveWorldChange(id: Long, world: World, timestampMillis: Long) {
+        if (timestampMillis <= clearedAt) return
+        _uiState.update {
+            if (it.messages.any { message -> message.id == id }) {
+                it
+            } else {
+                it.copy(
+                    messages = it.messages + ChatMessage(
+                        id = id,
+                        sender = User(UserId("world"), world.name),
+                        body = world.name,
+                        timestampMillis = timestampMillis,
+                        world = world,
+                    ),
+                )
             }
         }
     }

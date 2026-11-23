@@ -34,12 +34,21 @@ data class StoredMessage(
     val timestampMillis: Long,
     val replyId: Long? = null,
     val isReply: Boolean = false,
+    val world: World? = null,
 )
 
 @Serializable
 data class ChatHistoryData(
     val histories: Map<String, List<StoredMessage>> = emptyMap(),
     val clearedAt: Map<String, Long> = emptyMap(),
+)
+
+@Serializable
+data class World(val id: String, val name: String)
+
+@Serializable
+data class WorldStoreData(
+    val worlds: List<World> = emptyList(),
 )
 
 @JvmInline
@@ -55,6 +64,7 @@ data class ChatMessage(
     val replyId: Long? = null,
     val isReply: Boolean = false,
     val reactions: List<MessageReaction> = emptyList(),
+    val world: World? = null,
 ) {
     fun isSentBy(userId: UserId): Boolean = sender.id == userId
 
@@ -92,6 +102,11 @@ sealed interface ChatEvent {
         val replyId: Long? = null,
         val isReply: Boolean = false,
         val timestampMillis: Long = System.currentTimeMillis(),
+    ) : ChatEvent
+    data class WorldChanged(
+        val id: Long,
+        val world: World,
+        val timestampMillis: Long,
     ) : ChatEvent
     data class Typing(val user: User, val isTyping: Boolean) : ChatEvent
     data class Reaction(val intent: ReactionIntent) : ChatEvent

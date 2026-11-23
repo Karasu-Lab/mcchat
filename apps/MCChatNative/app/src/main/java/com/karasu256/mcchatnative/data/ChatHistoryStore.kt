@@ -31,6 +31,7 @@ object ChatHistoryStore {
                 timestampMillis = it.timestampMillis,
                 replyId = it.replyId,
                 isReply = it.isReply,
+                world = it.world,
             )
         }
 
@@ -55,6 +56,7 @@ object ChatHistoryStore {
                 timestampMillis = it.timestampMillis,
                 replyId = it.replyId,
                 isReply = it.isReply,
+                world = it.world,
             )
         }
         store?.updateData { it.copy(histories = it.histories + (host to stored)) }

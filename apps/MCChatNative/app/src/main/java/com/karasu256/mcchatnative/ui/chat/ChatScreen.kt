@@ -70,6 +70,7 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -338,6 +339,10 @@ private fun MessageList(
                     heights = heights,
                     tops = tops,
                 ) {
+                    message.world?.let { world ->
+                        WorldDivider(world)
+                        return@ViewportItem
+                    }
                     MessageRow(
                         message = message,
                         currentUserId = currentUserId,

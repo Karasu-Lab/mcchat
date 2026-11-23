@@ -1,13 +1,13 @@
 package com.karasu256.mcchatnative.data
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import androidx.core.app.NotificationChannelCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.karasu256.mcchatnative.R
 
 class ConnectionService : Service() {
@@ -17,15 +17,12 @@ class ConnectionService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(
-                ChannelId,
-                getString(R.string.connection_channel_name),
-                NotificationManager.IMPORTANCE_LOW,
-            ),
+        NotificationManagerCompat.from(this).createNotificationChannel(
+            NotificationChannelCompat.Builder(ChannelId, NotificationManagerCompat.IMPORTANCE_LOW)
+                .setName(getString(R.string.connection_channel_name))
+                .build(),
         )
-        val notification = Notification.Builder(this, ChannelId)
+        val notification = NotificationCompat.Builder(this, ChannelId)
             .setSmallIcon(android.R.drawable.stat_notify_chat)
             .setContentTitle(getString(R.string.connection_notification_title))
             .setOngoing(true)
