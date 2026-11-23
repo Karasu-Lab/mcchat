@@ -50,7 +50,9 @@ public final class CapturePipeline implements AutoCloseable {
     WorldContext context = current.context();
     WorldContext withSkins =
         new WorldContext(
-            SkinResolver.attachAll(context.players()), context.history(), context.icon().orElse(null));
+            SkinResolver.attachAll(context.players()),
+            context.history(),
+            context.icon().orElse(null));
     return new CapturedPacket(
         CapturedPacket.Type.SNAPSHOT, authority, current.withContext(withSkins), Optional.empty());
   }
@@ -92,7 +94,9 @@ public final class CapturePipeline implements AutoCloseable {
   public void adoptContext(WorldContext context) {
     enqueue(() -> {
       WorldContext adopted =
-          context.icon().isPresent() ? context : context.withIcon(world.context().icon().orElse(null));
+          context.icon().isPresent()
+              ? context
+              : context.withIcon(world.context().icon().orElse(null));
       world = world.withContext(adopted);
       emit(new CapturedPacket(CapturedPacket.Type.SNAPSHOT, authority, world, Optional.empty()));
     });
