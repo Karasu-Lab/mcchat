@@ -1,9 +1,12 @@
 package com.karasu256.mcchatnative.model
 
 import androidx.annotation.StringRes
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
 import com.karasu256.mcchat.common.component.ChatText
 import com.karasu256.mcchatnative.R
-import kotlinx.serialization.Serializable
 import java.util.UUID
 
 data class Client(
@@ -14,22 +17,19 @@ data class Client(
     val icon: ByteArray? = null,
 )
 
-@Serializable
+@Entity(tableName = "connections", indices = [Index("host", "port", unique = true)])
 data class ConnectionInfo(
-    val id: String,
+    @PrimaryKey val id: String,
     val host: String,
     val port: Int,
     val userId: String? = null,
     val userName: String? = null,
 )
 
-@Serializable
-data class ConnectionStoreData(
-    val connections: List<ConnectionInfo> = emptyList(),
-)
-
-@Serializable
+@Entity(tableName = "messages", primaryKeys = ["host", "position"])
 data class StoredMessage(
+    val host: String,
+    val position: Int,
     val id: Long,
     val senderId: String,
     val senderName: String,
@@ -38,22 +38,17 @@ data class StoredMessage(
     val replyId: Long? = null,
     val text: String? = null,
     val eventId: String? = null,
-    val world: World? = null,
+    @Embedded(prefix = "world_") val world: World? = null,
 )
 
-@Serializable
-data class ChatHistoryData(
-    val histories: Map<String, List<StoredMessage>> = emptyMap(),
-    val clearedAt: Map<String, Long> = emptyMap(),
+@Entity(tableName = "history_cleared")
+data class HistoryCleared(
+    @PrimaryKey val host: String,
+    val clearedAt: Long,
 )
 
-@Serializable
-data class World(val id: String, val name: String)
-
-@Serializable
-data class WorldStoreData(
-    val worlds: List<World> = emptyList(),
-)
+@Entity(tableName = "worlds")
+data class World(@PrimaryKey val id: String, val name: String)
 
 @JvmInline
 value class UserId(val value: String)
@@ -78,15 +73,14 @@ data class ChatMessage(
 
 fun UserId.uuid(): UUID? = runCatching { UUID.fromString(value) }.getOrNull()
 
-@Serializable
 enum class ThreadCategory(@StringRes val labelRes: Int) {
     Pinned(R.string.drawer_pinned),
     Recent(R.string.drawer_recent),
 }
 
-@Serializable
+@Entity(tableName = "threads", indices = [Index("clientId", unique = true)])
 data class ChatThread(
-    val id: String,
+    @PrimaryKey val id: String,
     val title: String,
     val clientId: String,
     val category: ThreadCategory = ThreadCategory.Recent,
@@ -94,11 +88,6 @@ data class ChatThread(
 ) {
     val isPinned: Boolean get() = category == ThreadCategory.Pinned
 }
-
-@Serializable
-data class ThreadStoreData(
-    val threads: List<ChatThread> = emptyList(),
-)
 
 sealed interface ChatEvent {
     data class Message(
