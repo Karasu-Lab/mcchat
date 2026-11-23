@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.network.chat.Component;
 
 public final class ChatLog {
   public static final ChatLog INSTANCE = new ChatLog();
@@ -22,6 +23,7 @@ public final class ChatLog {
       UUID id,
       PlayerRef sender,
       ChatText text,
+      Component component,
       long timestampMillis,
       int addedTick,
       boolean own,
@@ -65,6 +67,7 @@ public final class ChatLog {
             chat.id(),
             chat.sender(),
             chat.text(),
+            chat.component(),
             chat.timestampMillis(),
             tick,
             own,

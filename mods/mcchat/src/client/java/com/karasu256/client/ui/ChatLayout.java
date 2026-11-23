@@ -118,7 +118,9 @@ final class ChatLayout {
     int timeWidth = scaledWidth(font, Component.literal(time).getVisualOrderText());
     int bubbleMax = width - 2 * m.listPadH - m.avatar - m.avatarGap - m.timeGap - timeWidth;
     List<FormattedCharSequence> lines =
-        font.split(ChatTextRenderer.render(message.text()), bubbleMax - 2 * m.bubblePadH);
+        font.split(
+            ChatTextRenderer.render(message.text(), message.component()),
+            bubbleMax - 2 * m.bubblePadH);
     int contentWidth = 0;
     for (FormattedCharSequence line : lines) {
       contentWidth = Math.max(contentWidth, font.width(line));

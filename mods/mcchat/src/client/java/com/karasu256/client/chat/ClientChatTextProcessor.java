@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.GuiMessageTag;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.chat.Component;
 
 public final class ClientChatTextProcessor {
   private static final List<Consumer<ReceivedChat>> listeners = new CopyOnWriteArrayList<>();
@@ -65,11 +66,12 @@ public final class ClientChatTextProcessor {
         dispatch(
             received(
                 sender == null ? null : PlayerRefs.of(sender),
-                signed != null ? signed.signedContent() : message.getString())));
+                signed != null ? signed.signedContent() : message.getString(),
+                signed != null ? signed.decoratedContent() : message)));
 
     ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
       if (!overlay) {
-        dispatch(received(null, message.getString()));
+        dispatch(received(null, message.getString(), message));
       }
     });
   }
@@ -82,7 +84,7 @@ public final class ClientChatTextProcessor {
     listeners.forEach(listener -> listener.accept(chat));
   }
 
-  private static ReceivedChat received(PlayerRef sender, String rawText) {
+  private static ReceivedChat received(PlayerRef sender, String rawText, Component display) {
     ReceivedChatTextPayload payload = structuredPayload;
     structuredPayload = null;
     UUID senderId = sender == null ? null : sender.uuid();
@@ -91,11 +93,16 @@ public final class ClientChatTextProcessor {
         || !payload.sender().equals(senderId)
         || !payload.text().plain().equals(rawText)) {
       return new ReceivedChat(
-          UUID.randomUUID(), sender, ChatText.parse(rawText, onlinePlayers()), false, now);
+          UUID.randomUUID(),
+          sender,
+          ChatText.parse(rawText, onlinePlayers()),
+          display,
+          false,
+          now);
     }
     boolean mention = payload.text().mentioned().contains(ClientCapture.sessionPlayer().uuid());
     highlightNextMessage = mention;
-    return new ReceivedChat(payload.messageId(), sender, payload.text(), mention, now);
+    return new ReceivedChat(payload.messageId(), sender, payload.text(), display, mention, now);
   }
 
   public static void send(ChatText chatText) {
