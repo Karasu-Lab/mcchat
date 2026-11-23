@@ -11,9 +11,9 @@ import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
 import com.karasu256.mcchatnative.model.World
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
 import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
@@ -92,12 +92,16 @@ object ConnectedChatEventSource : ChatEventSource {
     }
 
     override fun activeUsers(clientId: String): Flow<List<User>> =
-        ConnectionManager.packets(clientId)
-            .scan(WorldContext.EMPTY, ::applyPlayers)
-            .map { context ->
+        combine(
+            ConnectionManager.packets(clientId).scan(WorldContext.EMPTY, ::applyPlayers),
+            ConnectionManager.inWorld(clientId),
+        ) { context, inWorld ->
+            if (inWorld) {
                 context.players().map { User(UserId(it.uuid().toString()), it.name()) }
+            } else {
+                emptyList()
             }
-            .distinctUntilChanged()
+        }.distinctUntilChanged()
 
     private fun typingOf(packet: CapturedPacket): CapturedData? =
         packet.data().orElse(null)?.takeIf {

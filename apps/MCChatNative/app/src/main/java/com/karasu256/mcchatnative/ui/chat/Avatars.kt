@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,8 +33,6 @@ import com.karasu256.mcchatnative.data.SkinCache
 import com.karasu256.mcchatnative.model.User
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-val AvatarSize = 32.dp
 
 private fun faceOf(png: ByteArray): ImageBitmap? {
     val skin = BitmapFactory.decodeByteArray(png, 0, png.size) ?: return null
@@ -51,10 +50,9 @@ private fun faceOf(png: ByteArray): ImageBitmap? {
 fun UserAvatar(
     user: User,
     ringColor: Color = Color.Transparent,
-    size: Dp = AvatarSize,
+    size: Dp = 32.dp,
+    labelStyle: TextStyle = MaterialTheme.typography.labelLarge,
 ) {
-    val style =
-        if (size < AvatarSize) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge
     val version by SkinCache.version.collectAsStateWithLifecycle()
     val face by produceState<ImageBitmap?>(null, user.id, version) {
         value = withContext(Dispatchers.Default) { SkinCache.get(user.id.value)?.let(::faceOf) }
@@ -76,7 +74,7 @@ fun UserAvatar(
             )
         } else {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Text(user.name.take(1), style = style)
+                Text(user.name.take(1), style = labelStyle)
             }
         }
     }
@@ -85,11 +83,12 @@ fun UserAvatar(
 @Composable
 fun AvatarStack(
     modifier: Modifier = Modifier,
+    overlap: Dp = 16.dp,
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(-AvatarSize / 2),
+        horizontalArrangement = Arrangement.spacedBy(-overlap),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )

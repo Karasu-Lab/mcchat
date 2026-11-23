@@ -133,9 +133,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private const val DrawerShrinkScale = 0.1f
-private const val DrawerShrinkShift = 0.1f
-
 @Destination<RootGraph>(start = true, style = PageTransitions::class)
 @Composable
 fun MainScreen(
@@ -192,6 +189,8 @@ private fun MainContent(
     onBack: () -> Unit,
     onOpenChat: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    drawerShrinkScale: Float = 0.1f,
+    drawerShrinkShift: Float = 0.1f,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerUiState by drawerViewModel.uiState.collectAsStateWithLifecycle()
@@ -257,8 +256,8 @@ private fun MainContent(
                     val closedness =
                         if (offset.isNaN()) 0f else (-offset / size.width).coerceIn(0f, 1f)
                     val shrink = maxOf(backProgress, closedness)
-                    scaleX = 1f - DrawerShrinkScale * shrink
-                    translationX = -size.width * DrawerShrinkShift * shrink
+                    scaleX = 1f - drawerShrinkScale * shrink
+                    translationX = -size.width * drawerShrinkShift * shrink
                     transformOrigin = TransformOrigin(0f, 0.5f)
                 },
             )

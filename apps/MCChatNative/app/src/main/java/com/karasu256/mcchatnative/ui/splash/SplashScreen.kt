@@ -31,17 +31,18 @@ import com.karasu256.mcchatnative.ui.theme.SplashInk
 import com.karasu256.mcchatnative.ui.theme.SplashPink
 import com.karasu256.mcchatnative.ui.theme.SplashSky
 
-private const val GradientSpan = 900f
-private const val CycleMillis = 4000
-
 @Composable
-fun SplashScreen(modifier: Modifier = Modifier) {
+fun SplashScreen(
+    modifier: Modifier = Modifier,
+    gradientSpan: Float = 900f,
+    cycleMillis: Int = 4000,
+) {
     val transition = rememberInfiniteTransition(label = "splash")
     val shift by transition.animateFloat(
         initialValue = 0f,
-        targetValue = GradientSpan * 2,
+        targetValue = gradientSpan * 2,
         animationSpec = infiniteRepeatable(
-            tween(CycleMillis, easing = LinearEasing),
+            tween(cycleMillis, easing = LinearEasing),
             RepeatMode.Restart
         ),
         label = "shift",
@@ -55,7 +56,7 @@ fun SplashScreen(modifier: Modifier = Modifier) {
                     Brush.linearGradient(
                         colors = listOf(SplashPink, SplashSky),
                         start = Offset(shift, shift),
-                        end = Offset(shift + GradientSpan, shift + GradientSpan),
+                        end = Offset(shift + gradientSpan, shift + gradientSpan),
                         tileMode = TileMode.Mirror,
                     ),
                 )
