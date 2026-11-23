@@ -1,11 +1,15 @@
 package com.karasu256.mcchatnative.data
 
 import android.content.Context
-import com.karasu256.mcchat.common.CapturedData
 import com.karasu256.mcchat.common.CapturedPacket
+import com.karasu256.mcchat.common.MinecraftChatScreen
+import com.karasu256.mcchat.common.MinecraftScreen
 import com.karasu256.mcchat.common.Origin
 import com.karasu256.mcchat.common.PlayerRef
 import com.karasu256.mcchat.common.WorldData
+import com.karasu256.mcchat.common.WorldIcon
+import com.karasu256.mcchatnative.data.event.AppEventContext
+import com.karasu256.mcchatnative.data.event.AppEvents
 import com.karasu256.mcchatnative.model.Client
 import com.karasu256.mcchatnative.model.ConnectionInfo
 import com.karasu256.mcchatnative.model.User
@@ -25,8 +29,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -39,20 +43,28 @@ object ConnectionManager {
     private const val InitialBackoffMillis = 1_000L
     private const val ConnectTimeoutMillis = 5_000
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + ErrorReporter.coroutineHandler)
+    private val scope =
+        CoroutineScope(SupervisorJob() + Dispatchers.IO + ErrorReporter.coroutineHandler)
     private val loops = HashMap<String, Job>()
     private val sockets = ConcurrentHashMap<String, Socket>()
     private val streams = ConcurrentHashMap<String, MutableSharedFlow<CapturedPacket>>()
     private val connections = MutableStateFlow<List<ConnectionInfo>>(emptyList())
     private val online = MutableStateFlow<Set<String>>(emptySet())
     private val inWorld = MutableStateFlow<Set<String>>(emptySet())
+    private val inChatScreen = MutableStateFlow<Set<String>>(emptySet())
+    private val icons = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
     private val selves = MutableStateFlow<Map<String, User>>(emptyMap())
     private val requestedSkins = ConcurrentHashMap.newKeySet<String>()
-    private val ping = CapturedPacket(CapturedPacket.Type.PING, Origin.CLIENT, WorldData.empty("", ""), Optional.empty())
+    private val ping = CapturedPacket(
+        CapturedPacket.Type.PING,
+        Origin.CLIENT,
+        WorldData.empty("", ""),
+        Optional.empty()
+    )
     private var store: ConnectionStore? = null
 
-    val clients: StateFlow<List<Client>> = combine(connections, online) { list, up ->
-        list.map { Client(it.id, it.host, "${it.host}:${it.port}", it.id in up) }
+    val clients: StateFlow<List<Client>> = combine(connections, online, icons) { list, up, icons ->
+        list.map { Client(it.id, it.host, "${it.host}:${it.port}", it.id in up, icons[it.id]) }
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     @Synchronized
@@ -86,6 +98,8 @@ object ConnectionManager {
         streams.remove(id)
         online.update { it - id }
         inWorld.update { it - id }
+        inChatScreen.update { it - id }
+        icons.update { it - id }
         store?.remove(id)
     }
 
@@ -110,6 +124,10 @@ object ConnectionManager {
     fun selfOf(clientId: String): User? = selves.value[clientId]
 
     fun inWorld(clientId: String): Flow<Boolean> = inWorld.map { clientId in it }
+
+    fun inChatScreen(clientId: String): Flow<Boolean> = inChatScreen.map { clientId in it }
+
+    fun requestStatus(clientId: String) = send(clientId, ping)
 
     fun hostOf(id: String): String? = connections.value.firstOrNull { it.id == id }?.host
 
@@ -143,50 +161,62 @@ object ConnectionManager {
             supervisorScope {
                 launch {
                     Socket().use { socket ->
-                        socket.connect(InetSocketAddress(info.host, info.port), ConnectTimeoutMillis)
+                        socket.connect(
+                            InetSocketAddress(info.host, info.port),
+                            ConnectTimeoutMillis
+                        )
                         sockets[info.id] = socket
                         online.update { it + info.id }
                         backoff = InitialBackoffMillis
                         send(info.id, ping)
-                        socket.getInputStream().bufferedReader(Charsets.UTF_8).forEachLine { receive(info.id, it) }
+                        socket.getInputStream().bufferedReader(Charsets.UTF_8)
+                            .forEachLine { receive(info.id, it) }
                     }
                 }
             }
             sockets.remove(info.id)
             online.update { it - info.id }
             inWorld.update { it - info.id }
+            inChatScreen.update { it - info.id }
             delay(backoff)
             backoff = minOf(backoff * 2, 30_000L)
         }
     }
 
     private fun receive(clientId: String, line: String) {
-        val packet = CapturedPacket.decode(line).orElse(null) ?: return
+        val packet = CapturedPacket.decode(line, AppEvents.registry).orElse(null) ?: return
+        packet.bind(AppEventContext(clientId))
         if (packet.world().id().isNotEmpty()) {
             WorldRegistry.register(World(packet.world().id(), packet.world().worldName()))
         }
-        if (packet.type() == CapturedPacket.Type.STATUS) {
-            val data = packet.data().orElse(null)
-            inWorld.update { if (data?.kind() == CapturedData.Kind.ONLINE) it + clientId else it - clientId }
-            data?.player()?.orElse(null)?.let { player ->
-                val user = User(UserId(player.uuid().toString()), player.name())
-                if (selves.value[clientId] != user) {
-                    selves.update { it + (clientId to user) }
-                    scope.launch { store?.setUser(clientId, user.id.value, user.name) }
-                }
-            }
-            return
+        packet.event().ifPresent { it.handle() }
+        if (packet.type() == CapturedPacket.Type.STATUS) return
+        if (packet.type() == CapturedPacket.Type.RESET || packet.type() == CapturedPacket.Type.SNAPSHOT) {
+            updateIcon(clientId, packet.world().context().icon().orElse(null))
         }
         cacheSkins(packet)
         stream(clientId).tryEmit(packet)
     }
 
+    internal fun updateStatus(clientId: String, online: Boolean, screen: MinecraftScreen?, player: PlayerRef?) {
+        inWorld.update { if (online) it + clientId else it - clientId }
+        inChatScreen.update { if (screen is MinecraftChatScreen) it + clientId else it - clientId }
+        player?.let {
+            val user = User(UserId(it.uuid().toString()), it.name())
+            if (selves.value[clientId] != user) {
+                selves.update { current -> current + (clientId to user) }
+                scope.launch { store?.setUser(clientId, user.id.value, user.name) }
+            }
+        }
+    }
+
+    internal fun updateIcon(clientId: String, icon: WorldIcon?) {
+        icons.update { if (icon != null) it + (clientId to icon.png()) else it - clientId }
+    }
+
     private fun cacheSkins(packet: CapturedPacket) {
-        val data = packet.data().orElse(null)
-        val worldEvent = data?.kind() == CapturedData.Kind.PLAYER_JOINED || data?.kind() == CapturedData.Kind.PLAYER_LEFT
         val players = packet.world().context().players() +
-            data?.players().orEmpty() +
-            listOfNotNull(data?.player()?.orElse(null)?.takeIf { worldEvent })
+                packet.event().map { it.referencedPlayers() }.orElse(emptyList())
         players.forEach { cacheSkin(it) }
     }
 

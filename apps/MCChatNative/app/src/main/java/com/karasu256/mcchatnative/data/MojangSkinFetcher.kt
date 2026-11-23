@@ -12,7 +12,14 @@ import java.net.URL
 
 object MojangSkinFetcher {
     suspend fun fetch(uuid: String): ByteArray? = withContext(Dispatchers.IO) {
-        val profile = download("https://sessionserver.mojang.com/session/minecraft/profile/${uuid.replace("-", "")}")
+        val profile = download(
+            "https://sessionserver.mojang.com/session/minecraft/profile/${
+                uuid.replace(
+                    "-",
+                    ""
+                )
+            }"
+        )
             ?: return@withContext null
         val textures = Json.parseToJsonElement(profile.decodeToString())
             .jsonObject["properties"]?.jsonArray

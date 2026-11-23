@@ -1,6 +1,6 @@
 package com.karasu256.mcchat.common;
 
-import com.google.gson.JsonObject;
+import com.google.gson.annotations.JsonAdapter;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
@@ -9,12 +9,12 @@ import java.util.UUID;
 public final class PlayerRef {
   private final UUID uuid;
   private final String name;
-  private final Optional<Skin> skin;
+  private final Skin skin;
 
   public PlayerRef(UUID uuid, String name, Optional<Skin> skin) {
     this.uuid = uuid;
     this.name = name;
-    this.skin = skin;
+    this.skin = skin.orElse(null);
   }
 
   public UUID uuid() {
@@ -26,28 +26,15 @@ public final class PlayerRef {
   }
 
   public Optional<Skin> skin() {
-    return skin;
+    return Optional.ofNullable(skin);
   }
 
   public PlayerRef withoutSkin() {
     return new PlayerRef(uuid, name, Optional.empty());
   }
 
-  JsonObject toJson() {
-    JsonObject json = new JsonObject();
-    json.addProperty("uuid", uuid.toString());
-    json.addProperty("name", name);
-    skin.ifPresent(s -> json.add("skin", s.toJson()));
-    return json;
-  }
-
-  static PlayerRef fromJson(JsonObject json) {
-    Optional<Skin> skin =
-        json.has("skin")
-            ? Optional.of(Skin.fromJson(json.getAsJsonObject("skin")))
-            : Optional.empty();
-    return new PlayerRef(
-        UUID.fromString(json.get("uuid").getAsString()), json.get("name").getAsString(), skin);
+  public boolean valid() {
+    return uuid != null && name != null && (skin == null || skin.png != null);
   }
 
   @Override
@@ -55,15 +42,16 @@ public final class PlayerRef {
     return o instanceof PlayerRef
         && uuid.equals(((PlayerRef) o).uuid)
         && name.equals(((PlayerRef) o).name)
-        && skin.equals(((PlayerRef) o).skin);
+        && skin().equals(((PlayerRef) o).skin());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(uuid, name, skin);
+    return Objects.hash(uuid, name, skin());
   }
 
   public static final class Skin {
+    @JsonAdapter(Json.HexAdapter.class)
     private final byte[] png;
 
     public Skin(byte[] png) {
@@ -72,16 +60,6 @@ public final class PlayerRef {
 
     public byte[] png() {
       return png;
-    }
-
-    JsonObject toJson() {
-      JsonObject json = new JsonObject();
-      json.addProperty("png", Hex.encode(png));
-      return json;
-    }
-
-    static Skin fromJson(JsonObject json) {
-      return new Skin(Hex.decode(json.get("png").getAsString()));
     }
 
     @Override

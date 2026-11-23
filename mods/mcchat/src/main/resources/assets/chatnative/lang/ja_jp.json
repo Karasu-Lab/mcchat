@@ -1,0 +1,10 @@
+{
+	"config.chatnative.title": "ChatNative",
+	"config.chatnative.client": "クライアント",
+	"config.chatnative.server": "サーバー",
+	"config.chatnative.tcp_enabled": "TCPサーバー",
+	"config.chatnative.use_vanilla_chat": "バニラのチャット",
+	"config.chatnative.show_own_typing": "自分自身の入力中インジケーターを表示",
+	"config.chatnative.show_own_name": "自分の名前を常に表示",
+	"chatnative.chat.system": "システム"
+}

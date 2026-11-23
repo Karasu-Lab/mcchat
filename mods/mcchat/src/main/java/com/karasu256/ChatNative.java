@@ -2,20 +2,24 @@ package com.karasu256;
 
 import com.karasu256.capture.CapturePipeline;
 import com.karasu256.capture.ServerCapture;
-import com.karasu256.config.ChatNativeConfig;
-import com.karasu256.mcchat.common.CapturedData;
-import com.karasu256.mcchat.common.CapturedPacket;
-import com.karasu256.mcchat.common.Origin;
+import com.karasu256.capture.ServerChatTextProcessor;
+import com.karasu256.capture.ServerTypingRelay;
+import com.karasu256.capture.ServerWorldSource;
+import com.karasu256.config.TcpConfig;
 import com.karasu256.net.CaptureEndpointPayload;
+import com.karasu256.net.ChatTextPayload;
+import com.karasu256.net.ReceivedChatTextPayload;
+import com.karasu256.net.TypingBroadcastPayload;
+import com.karasu256.net.ServerTcpController;
 import com.karasu256.net.TCPServer;
-import com.karasu256.net.TCPSink;
-import java.io.IOException;
+import com.karasu256.net.TypingPayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,17 +27,41 @@ public class ChatNative implements ModInitializer {
   public static final String MOD_ID = "chatnative";
   public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-  private static ChatNativeConfig config;
+  private static TcpConfig serverConfig;
+  private static TcpConfig clientConfig;
   private static CapturePipeline pipeline;
   private static CapturePipeline dedicatedPipeline;
-  private static TCPServer dedicatedServer;
+  private static ServerTcpController serverTcp;
 
-  public static ChatNativeConfig config() {
-    return config;
+  public static synchronized TcpConfig serverConfig() {
+    if (serverConfig == null) {
+      serverConfig = TcpConfig.load(MOD_ID + "-server.json", 25566);
+    }
+    return serverConfig;
+  }
+
+  public static synchronized TcpConfig clientConfig() {
+    if (clientConfig == null) {
+      clientConfig = TcpConfig.load(MOD_ID + "-client.json", 25570);
+    }
+    return clientConfig;
   }
 
   public static CapturePipeline pipeline() {
     return pipeline;
+  }
+
+  public static ServerTcpController serverTcp() {
+    return serverTcp;
+  }
+
+  public static String levelId(MinecraftServer server) {
+    return server
+        .getWorldPath(LevelResource.ROOT)
+        .toAbsolutePath()
+        .normalize()
+        .getFileName()
+        .toString();
   }
 
   public static CapturePipeline pipelineFor(MinecraftServer server) {
@@ -42,87 +70,51 @@ public class ChatNative implements ModInitializer {
 
   @Override
   public void onInitialize() {
-    config = ChatNativeConfig.load();
     pipeline = new CapturePipeline();
+    serverTcp = new ServerTcpController(serverConfig());
     ServerCapture.register();
-
     PayloadTypeRegistry.clientboundPlay()
         .register(CaptureEndpointPayload.TYPE, CaptureEndpointPayload.CODEC);
+    PayloadTypeRegistry.clientboundPlay()
+        .register(ReceivedChatTextPayload.TYPE, ReceivedChatTextPayload.CODEC);
+    PayloadTypeRegistry.clientboundPlay()
+        .register(TypingBroadcastPayload.TYPE, TypingBroadcastPayload.CODEC);
+    PayloadTypeRegistry.serverboundPlay().register(ChatTextPayload.TYPE, ChatTextPayload.CODEC);
+    PayloadTypeRegistry.serverboundPlay().register(TypingPayload.TYPE, TypingPayload.CODEC);
+    ServerPlayNetworking.registerGlobalReceiver(
+        ChatTextPayload.TYPE,
+        (payload, context) -> ServerChatTextProcessor.hold(context.player(), payload.text()));
+    ServerPlayNetworking.registerGlobalReceiver(
+        TypingPayload.TYPE,
+        (payload, context) -> ServerTypingRelay.relay(context.player(), payload.started()));
 
     ServerLifecycleEvents.SERVER_STARTED.register(server -> {
       if (server.isDedicatedServer()) {
-        startDedicatedCapture(server);
+        dedicatedPipeline = new CapturePipeline();
+        dedicatedPipeline.reset(new ServerWorldSource(server));
+        dedicatedPipeline.setOnline(true, null);
       }
+      serverTcp.attach(server);
     });
 
     ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-      if (server.isDedicatedServer()) {
-        stopDedicatedCapture();
+      serverTcp.detach();
+      if (dedicatedPipeline != null) {
+        dedicatedPipeline.close();
+        dedicatedPipeline = null;
       }
     });
+
+    ServerPlayConnectionEvents.DISCONNECT.register(
+        (handler, server) -> ServerTypingRelay.relay(handler.getPlayer(), false));
 
     ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+      TCPServer tcp = serverTcp.tcp();
       if (server.isDedicatedServer()
-          && dedicatedServer != null
+          && tcp != null
           && ServerPlayNetworking.canSend(handler, CaptureEndpointPayload.TYPE)) {
-        sender.sendPacket(new CaptureEndpointPayload("", dedicatedServer.port()));
+        sender.sendPacket(new CaptureEndpointPayload("", tcp.port()));
       }
     });
-  }
-
-  private static void startDedicatedCapture(MinecraftServer server) {
-    dedicatedPipeline = new CapturePipeline();
-    dedicatedPipeline.reset("", server.getMotd(), Origin.SERVER);
-    dedicatedPipeline.setOnline(true, null);
-    CapturePipeline pipeline = dedicatedPipeline;
-    TCPServer tcp =
-        new TCPServer(
-            pipeline::snapshot,
-            packet -> {
-              if (packet.type() == CapturedPacket.Type.PING) {
-                pipeline.requestStatus();
-              } else if (packet.type() == CapturedPacket.Type.EVENT) {
-                packet
-                    .data()
-                    .filter(ChatNative::isTyping)
-                    .ifPresent(data -> relayTyping(pipeline, data));
-              }
-            });
-    try {
-      tcp.start(config.serverPort);
-    } catch (IOException e) {
-      LOGGER.error("Failed to open TCP port {}", config.serverPort, e);
-      return;
-    }
-    dedicatedPipeline.addSink(new TCPSink(tcp));
-    dedicatedServer = tcp;
-  }
-
-  private static boolean isTyping(CapturedData data) {
-    return data.kind() == CapturedData.Kind.TYPING_STARTED
-        || data.kind() == CapturedData.Kind.TYPING_STOPPED;
-  }
-
-  private static void relayTyping(CapturePipeline pipeline, CapturedData data) {
-    pipeline.submit(
-        new CapturedData(
-            data.id(),
-            data.timestampMillis(),
-            Origin.SERVER,
-            data.kind(),
-            data.player(),
-            data.content(),
-            data.players()));
-  }
-
-  private static void stopDedicatedCapture() {
-    if (dedicatedServer != null) {
-      dedicatedServer.close();
-      dedicatedServer = null;
-    }
-    if (dedicatedPipeline != null) {
-      dedicatedPipeline.close();
-      dedicatedPipeline = null;
-    }
   }
 }

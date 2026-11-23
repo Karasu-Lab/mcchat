@@ -36,11 +36,6 @@ import androidx.compose.ui.window.PopupPositionProvider
 import com.karasu256.mcchatnative.model.ReactionData
 import kotlinx.coroutines.delay
 
-private const val ItemEnterMillis = 200
-private const val ItemStaggerMillis = 40L
-private const val ItemInitialScale = 0.4f
-private val PickerOrigin = TransformOrigin(0.5f, 1f)
-
 @Composable
 fun ReactionPicker(
     visible: Boolean,
@@ -49,6 +44,7 @@ fun ReactionPicker(
     onReact: (ReactionData) -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    transformOrigin: TransformOrigin = TransformOrigin(0.5f, 1f),
 ) {
     val density = LocalDensity.current
     val positionProvider = remember(density) {
@@ -61,7 +57,7 @@ fun ReactionPicker(
     ScalePopup(
         visible = visible,
         positionProvider = positionProvider,
-        transformOrigin = PickerOrigin,
+        transformOrigin = transformOrigin,
         onDismissRequest = onDismissRequest,
         modifier = modifier,
     ) {
@@ -89,16 +85,24 @@ fun ReactionPicker(
 }
 
 @Composable
-private fun ReactionItem(reaction: ReactionData, index: Int, selected: Boolean, onClick: () -> Unit) {
+private fun ReactionItem(
+    reaction: ReactionData,
+    index: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    enterMillis: Int = 200,
+    staggerMillis: Long = 40L,
+    initialScale: Float = 0.4f,
+) {
     val selectedColor = MaterialTheme.colorScheme.secondaryContainer
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(index * ItemStaggerMillis)
+        delay(index * staggerMillis)
         shown = true
     }
     val progress by animateFloatAsState(
         targetValue = if (shown) 1f else 0f,
-        animationSpec = tween(ItemEnterMillis),
+        animationSpec = tween(enterMillis),
         label = "reactionItem",
     )
 
@@ -106,7 +110,7 @@ private fun ReactionItem(reaction: ReactionData, index: Int, selected: Boolean, 
         modifier = Modifier
             .size(44.dp)
             .graphicsLayer {
-                val scale = ItemInitialScale + (1f - ItemInitialScale) * progress
+                val scale = initialScale + (1f - initialScale) * progress
                 scaleX = scale
                 scaleY = scale
                 alpha = progress

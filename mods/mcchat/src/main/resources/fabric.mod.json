@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"com.karasu256.client.ChatNativeClient"
+		],
+		"modmenu": [
+			"com.karasu256.client.config.ChatNativeModMenu"
 		]
 	},
 	"mixins": [
@@ -29,10 +32,21 @@
 			"environment": "client"
 		}
 	],
+	"custom": {
+		"loom:injected_interfaces": {
+			"net/minecraft/client/gui/screens/Screen": [
+				"com/karasu256/client/screen/ScreenTracked"
+			]
+		}
+	},
 	"depends": {
 		"fabricloader": ">=0.20.1",
 		"minecraft": "~26.3",
 		"java": ">=25",
 		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*",
+		"cloth-config": "*"
 	}
 }

@@ -11,24 +11,36 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavBackStackEntry
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 
-private const val EnterMillis = 400
-private const val ExitMillis = 200
-private const val ParallaxDivisor = 4
-
 object PageTransitions : NavHostAnimatedDestinationStyle() {
-    override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-        slideInHorizontally(tween(EnterMillis)) { it } + fadeIn(tween(EnterMillis))
-    }
+    private const val EnterMillis = 400
+    private const val ExitMillis = 200
+    private const val ParallaxDivisor = 4
 
-    override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-        slideOutHorizontally(tween(EnterMillis)) { -it / ParallaxDivisor } + fadeOut(tween(ExitMillis))
-    }
+    override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
+        {
+            slideInHorizontally(tween(EnterMillis)) { it } + fadeIn(tween(EnterMillis))
+        }
 
-    override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-        slideInHorizontally(tween(EnterMillis)) { -it / ParallaxDivisor } + fadeIn(tween(EnterMillis))
-    }
+    override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
+        {
+            slideOutHorizontally(tween(EnterMillis)) { -it / ParallaxDivisor } + fadeOut(
+                tween(
+                    ExitMillis
+                )
+            )
+        }
 
-    override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-        slideOutHorizontally(tween(EnterMillis)) { it } + fadeOut(tween(ExitMillis))
-    }
+    override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
+        {
+            slideInHorizontally(tween(EnterMillis)) { -it / ParallaxDivisor } + fadeIn(
+                tween(
+                    EnterMillis
+                )
+            )
+        }
+
+    override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
+        {
+            slideOutHorizontally(tween(EnterMillis)) { it } + fadeOut(tween(ExitMillis))
+        }
 }

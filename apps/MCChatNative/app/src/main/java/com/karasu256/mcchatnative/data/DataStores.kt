@@ -19,15 +19,17 @@ class JsonOkioSerializer<T>(
     private val serializer: KSerializer<T>,
     override val defaultValue: T,
 ) : OkioSerializer<T> {
+    private val json = Json { ignoreUnknownKeys = true }
+
     override suspend fun readFrom(source: BufferedSource): T =
         try {
-            Json.decodeFromString(serializer, source.readUtf8())
+            json.decodeFromString(serializer, source.readUtf8())
         } catch (e: SerializationException) {
             throw CorruptionException("Cannot read ${serializer.descriptor.serialName}", e)
         }
 
     override suspend fun writeTo(t: T, sink: BufferedSink) {
-        sink.writeUtf8(Json.encodeToString(serializer, t))
+        sink.writeUtf8(json.encodeToString(serializer, t))
     }
 }
 
@@ -35,11 +37,16 @@ object DataStores {
     private val stores = ConcurrentHashMap<String, DataStore<*>>()
 
     @Suppress("UNCHECKED_CAST")
-    fun <T> get(context: Context, fileName: String, serializer: JsonOkioSerializer<T>): DataStore<T> =
+    fun <T> get(
+        context: Context,
+        fileName: String,
+        serializer: JsonOkioSerializer<T>
+    ): DataStore<T> =
         stores.getOrPut(fileName) {
             DataStoreFactory.create(
                 storage = OkioStorage(FileSystem.SYSTEM, serializer) {
-                    context.applicationContext.filesDir.resolve("datastore").resolve(fileName).absolutePath.toPath()
+                    context.applicationContext.filesDir.resolve("datastore")
+                        .resolve(fileName).absolutePath.toPath()
                 },
             )
         } as DataStore<T>

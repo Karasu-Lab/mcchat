@@ -1,20 +1,19 @@
 package com.karasu256.mcchatnative.data
 
+import com.karasu256.mcchat.common.component.ChatText
 import com.karasu256.mcchatnative.model.ChatEvent
 import com.karasu256.mcchatnative.model.ChatMessage
-import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.ReactionIntent
 import com.karasu256.mcchatnative.model.Reactions
+import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.transform
-
-private const val StepIntervalMillis = 2_000L
 
 private fun demoUser(name: String) = User(UserId("demo-${name.lowercase()}"), name)
 
@@ -30,8 +29,7 @@ private fun message(
     sender: User,
     body: String,
     replyId: Long? = null,
-    isReply: Boolean = false,
-): ChatEvent = ChatEvent.Message(id, sender, body, replyId, isReply)
+): ChatEvent = ChatEvent.Message(id, sender, ChatText.raw(body), replyId)
 
 private fun typing(user: User, isTyping: Boolean): ChatEvent =
     ChatEvent.Typing(user, isTyping)
@@ -67,15 +65,21 @@ private val demoSteps: List<List<ChatEvent>> = listOf(
 )
 
 private val demoActiveUsers = listOf(
-    Alex, Sam, Mika, Ren,
-    demoUser("Yuki"), demoUser("Haru"), demoUser("Sora"), demoUser("Kai"), demoUser("Nao"), demoUser("Rin"),
+    Alex,
+    Sam,
+    Mika,
+    Ren,
+    demoUser("Yuki"),
+    demoUser("Haru"),
+    demoUser("Sora"),
+    demoUser("Kai"),
+    demoUser("Nao"),
+    demoUser("Rin"),
 )
-
-private const val FirstDemoReplyId = 100L
 
 object DemoChatEventSource : ChatEventSource {
     private val sent = MutableSharedFlow<ChatMessage>(extraBufferCapacity = 8)
-    private var nextReplyId = FirstDemoReplyId
+    private var nextReplyId = 100L
 
     override fun activeUsers(clientId: String): Flow<List<User>> = flowOf(demoActiveUsers)
 
@@ -83,16 +87,26 @@ object DemoChatEventSource : ChatEventSource {
         sent.emit(message)
     }
 
-    override fun events(clientId: String): Flow<ChatEvent> = merge(
-        flow {
-            for (event in demoSteps.flatten()) {
-                delay(StepIntervalMillis)
-                emit(event)
-            }
-        },
-        sent.transform { message ->
-            delay(StepIntervalMillis)
-            emit(message(nextReplyId++, Sam, "了解です、一緒に行きましょう", replyId = message.id, isReply = true))
-        },
-    )
+    override fun events(clientId: String): Flow<ChatEvent> {
+        val stepMillis = 2_000L
+        return merge(
+            flow {
+                for (event in demoSteps.flatten()) {
+                    delay(stepMillis)
+                    emit(event)
+                }
+            },
+            sent.transform { message ->
+                delay(stepMillis)
+                emit(
+                    message(
+                        nextReplyId++,
+                        Sam,
+                        "了解です、一緒に行きましょう",
+                        replyId = message.id,
+                    )
+                )
+            },
+        )
+    }
 }

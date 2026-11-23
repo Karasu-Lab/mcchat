@@ -4,11 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.karasu256.mcchat.common.CapturedData;
-import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
+import com.karasu256.mcchat.common.event.CapturedEvent;
+import com.karasu256.mcchat.common.event.ChatReceivedEvent;
+import com.karasu256.mcchat.common.event.MessageEvent;
+import com.karasu256.mcchat.common.event.PlayerJoinedEvent;
+import com.karasu256.mcchat.common.event.PlayerLeftEvent;
+import com.karasu256.mcchat.common.event.PlayerListEvent;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,20 +46,28 @@ class CapturePipelineTest {
     return packet;
   }
 
+  private static Optional<String> content(CapturedEvent event) {
+    return ((MessageEvent) event).content();
+  }
+
+  private ChatReceivedEvent chat(Origin origin, String text) {
+    return new ChatReceivedEvent(pipeline, origin, ALEX, text);
+  }
+
   @Test
   void preservesSubmissionOrderAndTrimsHistory() throws Exception {
     pipeline.setAuthority(Origin.CLIENT);
     for (int i = 0; i <= 100; i++) {
-      pipeline.submit(CapturedData.of(Origin.CLIENT, Kind.CHAT_RECEIVED, ALEX, "m" + i));
+      chat(Origin.CLIENT, "m" + i).handle();
     }
     for (int i = 0; i <= 100; i++) {
-      assertEquals(Optional.of("m" + i), next().data().get().content());
+      assertEquals(Optional.of("m" + i), content(next().event().get()));
     }
 
-    List<CapturedData> history = pipeline.snapshot().world().context().history();
+    List<CapturedEvent> history = pipeline.snapshot().world().context().history();
     assertEquals(100, history.size());
-    assertEquals(Optional.of("m1"), history.get(0).content());
-    assertEquals(Optional.of("m100"), history.get(99).content());
+    assertEquals(Optional.of("m1"), content(history.get(0)));
+    assertEquals(Optional.of("m100"), content(history.get(99)));
   }
 
   @Test
@@ -63,12 +75,12 @@ class CapturePipelineTest {
     pipeline.reset("host", "world", Origin.SERVER);
     assertEquals(CapturedPacket.Type.RESET, next().type());
 
-    pipeline.submit(CapturedData.of(Origin.CLIENT, Kind.CHAT_RECEIVED, ALEX, "cache"));
-    pipeline.submit(CapturedData.of(Origin.SERVER, Kind.CHAT_RECEIVED, ALEX, "truth"));
+    chat(Origin.CLIENT, "cache").handle();
+    chat(Origin.SERVER, "truth").handle();
 
     CapturedPacket packet = next();
     assertEquals(Origin.SERVER, packet.authority());
-    assertEquals(Optional.of("truth"), packet.data().get().content());
+    assertEquals(Optional.of("truth"), content(packet.event().get()));
     assertTrue(out.isEmpty());
   }
 
@@ -77,16 +89,16 @@ class CapturePipelineTest {
     pipeline.reset("host", "world", Origin.CLIENT);
     next();
 
-    pipeline.submit(CapturedData.of(Origin.SERVER, Kind.CHAT_RECEIVED, ALEX, "ignored"));
-    pipeline.submit(CapturedData.of(Origin.CLIENT, Kind.CHAT_RECEIVED, ALEX, "kept"));
+    chat(Origin.SERVER, "ignored").handle();
+    chat(Origin.CLIENT, "kept").handle();
 
-    assertEquals(Optional.of("kept"), next().data().get().content());
+    assertEquals(Optional.of("kept"), content(next().event().get()));
   }
 
   @Test
   void resetClearsTheDataTree() throws Exception {
     pipeline.reset("a", "one", Origin.CLIENT);
-    pipeline.submit(CapturedData.playerList(Origin.CLIENT, List.of(ALEX)));
+    new PlayerListEvent(pipeline, Origin.CLIENT, List.of(ALEX)).handle();
     next();
     next();
     assertEquals(1, pipeline.snapshot().world().context().players().size());
@@ -103,11 +115,11 @@ class CapturePipelineTest {
   void tracksPlayerJoinAndLeave() throws Exception {
     pipeline.reset("h", "w", Origin.CLIENT);
     next();
-    pipeline.submit(CapturedData.of(Origin.CLIENT, Kind.PLAYER_JOINED, ALEX, null));
+    new PlayerJoinedEvent(pipeline, Origin.CLIENT, ALEX).handle();
     next();
     assertEquals(List.of(ALEX), pipeline.snapshot().world().context().players());
 
-    pipeline.submit(CapturedData.of(Origin.CLIENT, Kind.PLAYER_LEFT, ALEX, null));
+    new PlayerLeftEvent(pipeline, Origin.CLIENT, ALEX).handle();
     next();
     assertTrue(pipeline.snapshot().world().context().players().isEmpty());
   }
