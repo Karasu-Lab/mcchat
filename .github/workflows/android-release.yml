@@ -1,0 +1,47 @@
+name: android-release
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - '.github/workflows/android-release.yml'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: build
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease bundleRelease
+      - name: sign artifacts
+        env:
+          ANDROID_SIGNING_PRIVATE_KEY: ${{ secrets.ANDROID_SIGNING_PRIVATE_KEY }}
+          ANDROID_SIGNING_PASSPHRASE: ${{ secrets.ANDROID_SIGNING_PASSPHRASE }}
+          ANDROID_SIGNING_KEY_ID: ${{ vars.ANDROID_SIGNING_KEY_ID }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_SIGNING_PRIVATE_KEY" | gpg --batch --import
+          for file in MCChatNative/app/build/outputs/apk/release/*.apk MCChatNative/app/build/outputs/bundle/release/*.aab; do
+            printf '%s' "$ANDROID_SIGNING_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --local-user "${ANDROID_SIGNING_KEY_ID}!" --sign --output "$file.gpg" "$file"
+          done
+      - name: capture release artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: Android Release Artifacts
+          path: |
+            apps/MCChatNative/app/build/outputs/apk/release/*.apk
+            apps/MCChatNative/app/build/outputs/bundle/release/*.aab
