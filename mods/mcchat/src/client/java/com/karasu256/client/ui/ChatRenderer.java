@@ -20,14 +20,16 @@ final class ChatRenderer {
   private final ChatTheme theme;
   private final ChatLayout layout;
   private final ReplyIcon replyIcon;
+  private final TypingIcon typingIcon;
   private final FadeAnimation mentionFade;
   private final FadeAnimation replyFade;
   private ChatLog.Message shownReply;
 
-  ChatRenderer(ChatTheme theme, ChatLayout layout, ReplyIcon replyIcon) {
+  ChatRenderer(ChatTheme theme, ChatLayout layout, ReplyIcon replyIcon, TypingIcon typingIcon) {
     this.theme = theme;
     this.layout = layout;
     this.replyIcon = replyIcon;
+    this.typingIcon = typingIcon;
     this.mentionFade = new FadeAnimation(theme.metrics.fadeMillis, 1f);
     this.replyFade = new FadeAnimation(theme.metrics.fadeMillis, 0f);
   }
@@ -92,6 +94,10 @@ final class ChatRenderer {
     glyph(g, font, mention, mentionToggleX(width), buttonTop, theme.colors.primary);
     mentionFade.postRender(g);
     glyph(g, font, "×", cancelX(width), buttonTop, theme.colors.onSurfaceVariant);
+  }
+
+  ChatLog.Message visibleReply() {
+    return shownReply;
   }
 
   int cancelX(int width) {
@@ -249,8 +255,7 @@ final class ChatRenderer {
       int color = ((int) (alpha * 255) << 24) | (theme.colors.onSurfaceVariant & 0xFFFFFF);
       int dotX = bubbleX + m.typingPad + i * (m.dot + m.dotGap);
       int dotY = bubbleY + m.typingPad;
-      g.fill(dotX + 1, dotY, dotX + m.dot - 1, dotY + m.dot, color);
-      g.fill(dotX, dotY + 1, dotX + m.dot, dotY + m.dot - 1, color);
+      typingIcon.draw(g, dotX, dotY, m.dot, color);
     }
   }
 

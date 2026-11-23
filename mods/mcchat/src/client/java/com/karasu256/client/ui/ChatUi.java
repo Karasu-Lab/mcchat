@@ -34,10 +34,10 @@ public final class ChatUi {
   private boolean cachedOwnName;
   private int scroll;
 
-  public ChatUi(ChatTheme theme, ReplyIcon replyIcon) {
+  public ChatUi(ChatTheme theme, ReplyIcon replyIcon, TypingIcon typingIcon) {
     this.theme = theme;
     this.layout = new ChatLayout(theme);
-    this.renderer = new ChatRenderer(theme, layout, replyIcon);
+    this.renderer = new ChatRenderer(theme, layout, replyIcon, typingIcon);
   }
 
   public boolean isActive() {
@@ -92,23 +92,25 @@ public final class ChatUi {
     Region region = region(screen.width, screen.height);
     Font font = Minecraft.getInstance().font;
     ChatTheme.Metrics m = theme.metrics;
-    ChatLog.Message reply = log.replyTarget();
+    ChatLog.Message reply = renderer.visibleReply();
     if (isActive()
         && reply != null
-        && reply.sender() != null
-        && inside(
+        && inside(mouseX, mouseY, 0, replyRowTop(screen), screen.width, m.replyRowHeight)) {
+      if (reply.sender() != null
+          && inside(
+              mouseX,
+              mouseY,
+              m.vanillaChatLeft,
+              replyRowTop(screen) + (m.replyButton - m.avatar) / 2,
+              m.avatar,
+              m.avatar)) {
+        g.renderComponentTooltip(
+            font,
+            ChatTextRenderer.playerInfo(reply.sender().uuid(), reply.sender().name())
+                .getTooltipLines(),
             mouseX,
-            mouseY,
-            m.vanillaChatLeft,
-            replyRowTop(screen) + (m.replyButton - m.avatar) / 2,
-            m.avatar,
-            m.avatar)) {
-      g.renderComponentTooltip(
-          font,
-          ChatTextRenderer.playerInfo(reply.sender().uuid(), reply.sender().name())
-              .getTooltipLines(),
-          mouseX,
-          mouseY);
+            mouseY);
+      }
       return;
     }
     if (!isActive() || cached == null || !region.contains(mouseX, mouseY)) {
@@ -213,7 +215,7 @@ public final class ChatUi {
       return false;
     }
     int replyTop = replyRowTop(screen);
-    if (log.replyTarget() != null
+    if (renderer.visibleReply() != null
         && mouseY >= replyTop
         && mouseY < replyTop + theme.metrics.replyRowHeight) {
       replyStatusClicked(screen, mouseX, mouseY, replyTop);
@@ -265,7 +267,10 @@ public final class ChatUi {
   }
 
   public boolean mouseScrolled(Screen screen, double mouseX, double mouseY, double amount) {
-    if (!isActive() || !region(screen.width, screen.height).contains(mouseX, mouseY)) {
+    if (!isActive()
+        || cached == null
+        || cached.rows().isEmpty()
+        || !region(screen.width, screen.height).contains(mouseX, mouseY)) {
       return false;
     }
     scroll += amount > 0 ? theme.metrics.scrollStep : -theme.metrics.scrollStep;

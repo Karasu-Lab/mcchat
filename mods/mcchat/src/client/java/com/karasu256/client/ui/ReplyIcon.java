@@ -1,14 +1,8 @@
 package com.karasu256.client.ui;
 
 import com.karasu256.ChatNative;
-import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.systems.RenderSystem;
-import java.io.IOException;
-import java.io.InputStream;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 
@@ -29,30 +23,12 @@ public final class ReplyIcon implements SimpleSynchronousResourceReloadListener 
 
   @Override
   public void onResourceManagerReload(ResourceManager manager) {
-    loaded = false;
-    try (InputStream stream = manager.getResourceOrThrow(svg).open()) {
-      NativeImage image = SvgRasterizer.rasterize(stream, textureSize);
-      DynamicTexture texture = new DynamicTexture(image);
-      texture.setFilter(true, false);
-      Minecraft.getInstance().getTextureManager().register(id, texture);
-      loaded = true;
-    } catch (IOException e) {
-      ChatNative.LOGGER.error("Failed to load the reply icon {}", svg, e);
-    }
+    loaded = SvgTextures.register(manager, svg, id, textureSize);
   }
 
   void draw(GuiGraphics graphics, int x, int y, int size, int argb) {
-    if (!loaded) {
-      return;
+    if (loaded) {
+      SvgTextures.draw(graphics, id, textureSize, x, y, size, argb);
     }
-    float outer = RenderSystem.getShaderColor()[3];
-    RenderSystem.enableBlend();
-    RenderSystem.setShaderColor(
-        ((argb >> 16) & 0xFF) / 255f,
-        ((argb >> 8) & 0xFF) / 255f,
-        (argb & 0xFF) / 255f,
-        outer * ((argb >>> 24) / 255f));
-    graphics.blit(id, x, y, size, size, 0f, 0f, textureSize, textureSize, textureSize, textureSize);
-    RenderSystem.setShaderColor(1f, 1f, 1f, outer);
   }
 }
