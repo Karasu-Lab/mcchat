@@ -162,6 +162,9 @@ object ConnectionManager {
 
     private fun receive(clientId: String, line: String) {
         val packet = CapturedPacket.decode(line).orElse(null) ?: return
+        if (packet.world().id().isNotEmpty()) {
+            WorldRegistry.register(World(packet.world().id(), packet.world().worldName()))
+        }
         if (packet.type() == CapturedPacket.Type.STATUS) {
             val data = packet.data().orElse(null)
             inWorld.update { if (data?.kind() == CapturedData.Kind.ONLINE) it + clientId else it - clientId }
@@ -173,11 +176,6 @@ object ConnectionManager {
                 }
             }
             return
-        }
-        val worldChange = packet.data().orElse(null)
-            ?.takeIf { packet.type() == CapturedPacket.Type.RESET && it.kind() == CapturedData.Kind.WORLD_CHANGED }
-        if (worldChange != null) {
-            WorldRegistry.register(World(packet.world().id(), worldChange.content().orElse("")))
         }
         cacheSkins(packet)
         stream(clientId).tryEmit(packet)
