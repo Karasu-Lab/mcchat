@@ -69,10 +69,22 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew ${{ matrix.tasks }}
-      - name: upload files and publish release
+      - name: write file table
+        if: env.RELEASED == 'true'
+        run: |
+          {
+            echo "| File | Version | SHA256 |"
+            echo "| --- | --- | --- |"
+            for file in ${{ matrix.files }}; do
+              echo "| \`$(basename "$file")\` | ${{ fromJSON(needs.release-please.outputs.tags)[format('{0}--version', matrix.path)] }} | \`$(sha256sum "$file" | cut -d' ' -f1)\` |"
+            done
+          } > "${{ runner.temp }}/files.md"
+      - name: upload files, append table and publish release
         if: env.RELEASED == 'true'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ fromJSON(needs.release-please.outputs.tags)[format('{0}--tag_name', matrix.path)] }}
           files: ${{ matrix.files }}
+          body_path: ${{ runner.temp }}/files.md
+          append_body: true
           draft: false
