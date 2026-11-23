@@ -23,7 +23,8 @@ public final class CapturedData {
     ONLINE,
     OFFLINE,
     TYPING_STARTED,
-    TYPING_STOPPED
+    TYPING_STOPPED,
+    WORLD_CHANGED
   }
 
   private final UUID id;

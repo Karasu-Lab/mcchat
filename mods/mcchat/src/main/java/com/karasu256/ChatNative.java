@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +27,8 @@ public class ChatNative implements ModInitializer {
   private static CapturePipeline pipeline;
   private static CapturePipeline dedicatedPipeline;
   private static TCPServer dedicatedServer;
+  private static TCPServer integratedServer;
+  private static TCPSink integratedSink;
 
   public static ChatNativeConfig config() {
     return config;
@@ -33,6 +36,15 @@ public class ChatNative implements ModInitializer {
 
   public static CapturePipeline pipeline() {
     return pipeline;
+  }
+
+  public static String levelId(MinecraftServer server) {
+    return server
+        .getWorldPath(LevelResource.ROOT)
+        .toAbsolutePath()
+        .normalize()
+        .getFileName()
+        .toString();
   }
 
   public static CapturePipeline pipelineFor(MinecraftServer server) {
@@ -48,12 +60,16 @@ public class ChatNative implements ModInitializer {
     ServerLifecycleEvents.SERVER_STARTED.register(server -> {
       if (server.isDedicatedServer()) {
         startDedicatedCapture(server);
+      } else {
+        startIntegratedCapture();
       }
     });
 
     ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
       if (server.isDedicatedServer()) {
         stopDedicatedCapture();
+      } else {
+        stopIntegratedCapture();
       }
     });
 
@@ -68,30 +84,54 @@ public class ChatNative implements ModInitializer {
 
   private static void startDedicatedCapture(MinecraftServer server) {
     dedicatedPipeline = new CapturePipeline();
-    dedicatedPipeline.reset("", server.getMotd(), Origin.SERVER);
+    dedicatedPipeline.reset(levelId(server), server.getMotd(), Origin.SERVER);
     dedicatedPipeline.setOnline(true, null);
-    CapturePipeline pipeline = dedicatedPipeline;
+    dedicatedServer = openServerPort(dedicatedPipeline);
+  }
+
+  private static void startIntegratedCapture() {
+    integratedServer = openServerPort(pipeline);
+    if (integratedServer != null) {
+      integratedSink = new TCPSink(integratedServer);
+      pipeline.addSink(integratedSink);
+    }
+  }
+
+  private static TCPServer openServerPort(CapturePipeline target) {
     TCPServer tcp =
         new TCPServer(
-            pipeline::snapshot,
+            target::snapshot,
             packet -> {
               if (packet.type() == CapturedPacket.Type.PING) {
-                pipeline.requestStatus();
+                target.requestStatus();
               } else if (packet.type() == CapturedPacket.Type.EVENT) {
                 packet
                     .data()
                     .filter(ChatNative::isTyping)
-                    .ifPresent(data -> relayTyping(pipeline, data));
+                    .ifPresent(data -> relayTyping(target, data));
               }
             });
     try {
       tcp.start(config.serverPort);
     } catch (IOException e) {
       LOGGER.error("Failed to open TCP port {}", config.serverPort, e);
-      return;
+      return null;
     }
-    dedicatedPipeline.addSink(new TCPSink(tcp));
-    dedicatedServer = tcp;
+    if (target == dedicatedPipeline) {
+      target.addSink(new TCPSink(tcp));
+    }
+    return tcp;
+  }
+
+  private static void stopIntegratedCapture() {
+    if (integratedSink != null) {
+      pipeline.removeSink(integratedSink);
+      integratedSink = null;
+    }
+    if (integratedServer != null) {
+      integratedServer.close();
+      integratedServer = null;
+    }
   }
 
   private static boolean isTyping(CapturedData data) {

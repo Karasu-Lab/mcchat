@@ -13,6 +13,8 @@ import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.TCPServer;
 import com.karasu256.net.TCPSink;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -69,16 +71,19 @@ public class ChatNativeClient implements ClientModInitializer {
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
-      pipeline.reset("localhost", local.getWorldData().getLevelName(), Origin.SERVER);
+      pipeline.reset(ChatNative.levelId(local), local.getWorldData().getLevelName(), Origin.SERVER);
       local.execute(() ->
           pipeline.submit(
               CapturedData.playerList(Origin.SERVER, ServerCapture.onlinePlayers(local))));
       return;
     }
     ServerData server = client.getCurrentServer();
-    String host = server == null ? "" : hostOf(server.ip);
     String name = server == null ? "" : server.name;
-    pipeline.reset(host, name, Origin.CLIENT);
+    String id =
+        server == null
+            ? ""
+            : UUID.nameUUIDFromBytes(server.ip.getBytes(StandardCharsets.UTF_8)).toString();
+    pipeline.reset(id, name, Origin.CLIENT);
   }
 
   private void connectUpstream(

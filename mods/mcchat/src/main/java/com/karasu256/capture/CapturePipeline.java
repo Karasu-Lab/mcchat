@@ -34,6 +34,10 @@ public final class CapturePipeline implements AutoCloseable {
     sinks.add(sink);
   }
 
+  public void removeSink(CaptureSink sink) {
+    sinks.remove(sink);
+  }
+
   public Origin authority() {
     return authority;
   }
@@ -65,7 +69,14 @@ public final class CapturePipeline implements AutoCloseable {
     enqueue(() -> {
       authority = newAuthority;
       world = WorldData.empty(host, worldName);
-      emit(new CapturedPacket(CapturedPacket.Type.RESET, authority, world, Optional.empty()));
+      emit(
+          new CapturedPacket(
+              CapturedPacket.Type.RESET,
+              authority,
+              world,
+              Optional.of(
+                  CapturedData.of(
+                      authority, CapturedData.Kind.WORLD_CHANGED, null, world.worldName()))));
     });
   }
 

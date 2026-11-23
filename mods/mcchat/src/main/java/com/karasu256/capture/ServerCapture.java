@@ -65,9 +65,6 @@ public final class ServerCapture {
 
   public static void commandExecuted(ServerPlayer player, String command) {
     MinecraftServer server = player.level().getServer();
-    if (!server.isDedicatedServer()) {
-      return;
-    }
     ChatNative.pipelineFor(server)
         .submit(
             CapturedData.of(

@@ -9,10 +9,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +47,34 @@ public final class TCPServer implements PacketChannel {
     socket.bind(new InetSocketAddress(port));
     serverSocket = socket;
     Threads.start("chatnative-tcp-accept-" + port, () -> acceptLoop(socket));
-    ChatNative.LOGGER.info("TCP capture server listening on port {}", socket.getLocalPort());
+    List<String> addresses = classCAddresses();
+    if (addresses.isEmpty()) {
+      ChatNative.LOGGER.info("TCP capture server listening on port {}", socket.getLocalPort());
+    }
+    for (String address : addresses) {
+      ChatNative.LOGGER.info(
+          "TCP capture server listening on {}:{}", address, socket.getLocalPort());
+    }
+  }
+
+  private static List<String> classCAddresses() {
+    List<String> found = new ArrayList<>();
+    try {
+      for (NetworkInterface nic : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+        if (!nic.isUp() || nic.isLoopback()) {
+          continue;
+        }
+        for (InetAddress address : Collections.list(nic.getInetAddresses())) {
+          byte[] raw = address.getAddress();
+          if (raw.length == 4 && (raw[0] & 0xFF) == 192 && (raw[1] & 0xFF) == 168) {
+            found.add(address.getHostAddress());
+          }
+        }
+      }
+    } catch (SocketException e) {
+      ChatNative.LOGGER.warn("Cannot list network interfaces", e);
+    }
+    return found;
   }
 
   public int port() {
