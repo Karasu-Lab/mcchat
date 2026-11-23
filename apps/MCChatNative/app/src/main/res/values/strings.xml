@@ -1,3 +1,23 @@
 <resources>
     <string name="app_name">MCChat Native</string>
+    <string name="clients_title">連携クライアント</string>
+    <string name="open_drawer">ドロワーを開く</string>
+    <string name="close_drawer">ドロワーを閉じる</string>
+    <string name="search">検索</string>
+    <string name="search_close">検索を閉じる</string>
+    <string name="settings">設定</string>
+    <string name="clients_empty">連携しているクライアントはありません</string>
+    <string name="clients_no_match">一致するクライアントはありません</string>
+    <string name="chat_back">戻る</string>
+    <string name="chat_input_hint">メッセージ</string>
+    <string name="chat_send">送信</string>
+    <string name="chat_empty">まだメッセージはありません</string>
+    <string name="chat_active_users">アクティブなユーザー</string>
+    <string name="chat_reply_cancel">返信を取り消す</string>
+    <string name="chat_reply_mention">返信の通知</string>
+    <string name="drawer_threads">スレッド</string>
+    <string name="drawer_pinned">ピン留め</string>
+    <string name="drawer_recent">最近</string>
+    <string name="thread_pin">ピン留めする</string>
+    <string name="thread_unpin">ピン留めを解除</string>
 </resources>
