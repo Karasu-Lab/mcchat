@@ -43,8 +43,7 @@ public final class ServerCapture {
 
     ServerMessageEvents.GAME_MESSAGE.register((server, message, overlay) -> {
       if (!overlay) {
-        new ChatSentEvent(
-                ChatNative.pipelineFor(server), Origin.SERVER, null, message.getString())
+        new ChatSentEvent(ChatNative.pipelineFor(server), Origin.SERVER, null, message.getString())
             .handle();
       }
     });

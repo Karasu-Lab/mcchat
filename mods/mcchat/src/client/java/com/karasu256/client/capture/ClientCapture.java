@@ -92,7 +92,8 @@ public final class ClientCapture {
 
   public static void sendCommand(String text) {
     sendToServer(
-        text, connection -> connection.sendCommand(text.startsWith("/") ? text.substring(1) : text));
+        text,
+        connection -> connection.sendCommand(text.startsWith("/") ? text.substring(1) : text));
   }
 
   private static void sendToServer(String text, Consumer<ClientPacketListener> action) {
@@ -121,8 +122,7 @@ public final class ClientCapture {
 
   public static void playerLeft(PlayerInfo info) {
     if (info != null) {
-      new PlayerLeftEvent(
-              ChatNative.pipeline(), Origin.CLIENT, PlayerRefs.of(info.getProfile()))
+      new PlayerLeftEvent(ChatNative.pipeline(), Origin.CLIENT, PlayerRefs.of(info.getProfile()))
           .handle();
     }
   }

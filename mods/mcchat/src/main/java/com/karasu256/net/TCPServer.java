@@ -39,9 +39,7 @@ public final class TCPServer implements PacketChannel {
   private volatile Thread upstreamThread;
 
   public TCPServer(
-      Supplier<CapturedPacket> snapshot,
-      Consumer<CapturedPacket> handler,
-      EventRegistry registry) {
+      Supplier<CapturedPacket> snapshot, Consumer<CapturedPacket> handler, EventRegistry registry) {
     this.snapshot = snapshot;
     this.handler = handler;
     this.registry = registry;
