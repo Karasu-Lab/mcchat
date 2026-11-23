@@ -3,11 +3,12 @@ package com.karasu256.net;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.karasu256.mcchat.common.CapturedData;
-import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.WorldData;
+import com.karasu256.mcchat.common.event.ChatReceivedEvent;
+import com.karasu256.mcchat.common.event.CommandSentEvent;
+import com.karasu256.mcchat.common.event.EventRegistry;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -35,7 +36,7 @@ class TCPServerTest {
 
   @BeforeEach
   void setUp() throws Exception {
-    server = new TCPServer(() -> SNAPSHOT, received::add);
+    server = new TCPServer(() -> SNAPSHOT, received::add, EventRegistry.common());
     server.start(0);
   }
 
@@ -57,7 +58,7 @@ class TCPServerTest {
           CapturedPacket.event(
               Origin.CLIENT,
               SNAPSHOT.world(),
-              CapturedData.of(Origin.CLIENT, Kind.CHAT_RECEIVED, null, "hi"));
+              new ChatReceivedEvent(null, Origin.CLIENT, null, "hi"));
       server.send(event);
 
       assertEquals(Optional.of(event), CapturedPacket.decode(reader.readLine()));
@@ -70,7 +71,7 @@ class TCPServerTest {
         CapturedPacket.event(
             Origin.CLIENT,
             SNAPSHOT.world(),
-            CapturedData.of(Origin.CLIENT, Kind.COMMAND_SENT, null, "time set day"));
+            new CommandSentEvent(null, Origin.CLIENT, null, "time set day"));
 
     try (Socket socket = new Socket("127.0.0.1", server.port());
         Writer writer = new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)) {

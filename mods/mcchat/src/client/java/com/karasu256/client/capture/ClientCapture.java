@@ -1,15 +1,21 @@
 package com.karasu256.client.capture;
 
 import com.karasu256.ChatNative;
-import com.karasu256.capture.CapturePipeline;
 import com.karasu256.capture.PlayerRefs;
-import com.karasu256.mcchat.common.CapturedData;
-import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.MinecraftScreen;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.WorldData;
+import com.karasu256.mcchat.common.event.CapturedEvent;
+import com.karasu256.mcchat.common.event.ChatReceivedEvent;
+import com.karasu256.mcchat.common.event.ChatSentEvent;
+import com.karasu256.mcchat.common.event.CommandSentEvent;
+import com.karasu256.mcchat.common.event.PlayerJoinedEvent;
+import com.karasu256.mcchat.common.event.PlayerLeftEvent;
+import com.karasu256.mcchat.common.event.PlayerListEvent;
+import com.karasu256.mcchat.common.event.TypingStartedEvent;
+import com.karasu256.mcchat.common.event.TypingStoppedEvent;
 import com.mojang.authlib.GameProfile;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +24,7 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 
 public final class ClientCapture {
@@ -28,22 +35,26 @@ public final class ClientCapture {
 
   public static void register() {
     ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, receptionTime) ->
-        submit(
-            Kind.CHAT_RECEIVED,
-            sender == null ? null : PlayerRefs.of(sender),
-            signed != null ? signed.signedContent() : message.getString()));
+        new ChatReceivedEvent(
+                ChatNative.pipeline(),
+                Origin.CLIENT,
+                sender == null ? null : PlayerRefs.of(sender),
+                signed != null ? signed.signedContent() : message.getString())
+            .handle());
 
     ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
       if (!overlay) {
-        submit(Kind.CHAT_RECEIVED, null, message.getString());
+        new ChatReceivedEvent(ChatNative.pipeline(), Origin.CLIENT, null, message.getString())
+            .handle();
       }
     });
 
-    ClientSendMessageEvents.CHAT.register(
-        message -> submit(Kind.CHAT_SENT, localPlayer(), message));
+    ClientSendMessageEvents.CHAT.register(message ->
+        new ChatSentEvent(ChatNative.pipeline(), Origin.CLIENT, localPlayer(), message).handle());
 
-    ClientSendMessageEvents.COMMAND.register(
-        command -> submit(Kind.COMMAND_SENT, localPlayer(), command));
+    ClientSendMessageEvents.COMMAND.register(command ->
+        new CommandSentEvent(ChatNative.pipeline(), Origin.CLIENT, localPlayer(), command)
+            .handle());
   }
 
   public static void screenChanged(MinecraftScreen screen) {
@@ -59,7 +70,7 @@ public final class ClientCapture {
       return;
     }
     typing = started;
-    ChatNative.pipeline().publish(typingData(started));
+    ChatNative.pipeline().publish(typingEvent(started));
     relayTyping(started);
   }
 
@@ -71,23 +82,48 @@ public final class ClientCapture {
               CapturedPacket.Type.EVENT,
               Origin.CLIENT,
               WorldData.empty("", ""),
-              Optional.of(typingData(started))));
+              Optional.of(typingEvent(started))));
     }
   }
 
-  private static CapturedData typingData(boolean started) {
-    return CapturedData.of(
-        Origin.CLIENT, started ? Kind.TYPING_STARTED : Kind.TYPING_STOPPED, localPlayer(), null);
+  public static void sendChat(String text) {
+    sendToServer(text, connection -> connection.sendChat(text));
+  }
+
+  public static void sendCommand(String text) {
+    sendToServer(
+        text,
+        connection -> connection.sendCommand(text.startsWith("/") ? text.substring(1) : text));
+  }
+
+  private static void sendToServer(String text, Consumer<ClientPacketListener> action) {
+    Minecraft client = Minecraft.getInstance();
+    if (text.isBlank() || client.player == null || client.getConnection() == null) {
+      return;
+    }
+    client.execute(() -> {
+      ClientPacketListener connection = client.getConnection();
+      if (connection != null) {
+        action.accept(connection);
+      }
+    });
+  }
+
+  private static CapturedEvent typingEvent(boolean started) {
+    return started
+        ? new TypingStartedEvent(ChatNative.pipeline(), Origin.CLIENT, localPlayer())
+        : new TypingStoppedEvent(ChatNative.pipeline(), Origin.CLIENT, localPlayer());
   }
 
   public static void playerJoined(GameProfile profile) {
     ClientSkins.request(profile);
-    submit(Kind.PLAYER_JOINED, PlayerRefs.of(profile), null);
+    new PlayerJoinedEvent(ChatNative.pipeline(), Origin.CLIENT, PlayerRefs.of(profile)).handle();
   }
 
   public static void playerLeft(PlayerInfo info) {
     if (info != null) {
-      submit(Kind.PLAYER_LEFT, PlayerRefs.of(info.getProfile()), null);
+      new PlayerLeftEvent(ChatNative.pipeline(), Origin.CLIENT, PlayerRefs.of(info.getProfile()))
+          .handle();
     }
   }
 
@@ -103,7 +139,7 @@ public final class ClientCapture {
         client.getConnection().getOnlinePlayers().stream()
             .map(info -> PlayerRefs.of(info.getProfile()))
             .toList();
-    ChatNative.pipeline().submit(CapturedData.playerList(Origin.CLIENT, players));
+    new PlayerListEvent(ChatNative.pipeline(), Origin.CLIENT, players).handle();
   }
 
   public static PlayerRef sessionPlayer() {
@@ -111,13 +147,8 @@ public final class ClientCapture {
     return new PlayerRef(user.getProfileId(), user.getName(), Optional.empty());
   }
 
-  private static PlayerRef localPlayer() {
+  public static PlayerRef localPlayer() {
     Minecraft client = Minecraft.getInstance();
     return client.player == null ? null : PlayerRefs.of(client.player.getGameProfile());
-  }
-
-  private static void submit(Kind kind, PlayerRef player, String content) {
-    CapturePipeline pipeline = ChatNative.pipeline();
-    pipeline.submit(CapturedData.of(Origin.CLIENT, kind, player, content));
   }
 }

@@ -3,13 +3,15 @@ package com.karasu256.capture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.karasu256.mcchat.common.CapturedData;
-import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.WorldContext;
 import com.karasu256.mcchat.common.WorldData;
+import com.karasu256.mcchat.common.event.CapturedEvent;
+import com.karasu256.mcchat.common.event.ChatReceivedEvent;
+import com.karasu256.mcchat.common.event.CommandSentEvent;
+import com.karasu256.mcchat.common.event.PlayerListEvent;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,7 +26,7 @@ class CapturedPacketTest {
 
   @Test
   void eventRoundTrips() {
-    CapturedData data = CapturedData.of(Origin.SERVER, Kind.CHAT_RECEIVED, PLAYER, "hello");
+    CapturedEvent data = new ChatReceivedEvent(null, Origin.SERVER, PLAYER, "hello");
     CapturedPacket packet =
         CapturedPacket.event(Origin.SERVER, WorldData.empty("example.com", "main"), data);
 
@@ -38,8 +40,8 @@ class CapturedPacketTest {
   void snapshotRoundTripsWithContext() {
     WorldContext context =
         WorldContext.EMPTY
-            .apply(CapturedData.playerList(Origin.CLIENT, List.of(PLAYER)), 10)
-            .apply(CapturedData.of(Origin.CLIENT, Kind.COMMAND_SENT, PLAYER, "time set day"), 10);
+            .apply(new PlayerListEvent(null, Origin.CLIENT, List.of(PLAYER)), 10)
+            .apply(new CommandSentEvent(null, Origin.CLIENT, PLAYER, "time set day"), 10);
     CapturedPacket packet =
         new CapturedPacket(
             CapturedPacket.Type.SNAPSHOT,
