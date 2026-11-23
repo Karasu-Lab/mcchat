@@ -34,8 +34,13 @@ object ConnectedChatEventSource : ChatEventSource {
                     ?: return@forEach
                 when (chatEvent) {
                     is ChatEvent.Message ->
-                        if (seen.add(chatEvent.id) && !consumePending(clientId, chatEvent.body)) {
-                            emit(chatEvent)
+                        if (seen.add(chatEvent.id)) {
+                            val eventId = chatEvent.eventId
+                            if (!consumePending(clientId, chatEvent.body)) {
+                                emit(chatEvent)
+                            } else if (eventId != null) {
+                                emit(ChatEvent.Delivered(chatEvent.body, eventId))
+                            }
                         }
 
                     is ChatEvent.WorldChanged -> if (seen.add(chatEvent.id)) emit(chatEvent)
@@ -50,10 +55,10 @@ object ConnectedChatEventSource : ChatEventSource {
         val event = if (message.body.startsWith("/")) {
             AppCommandSentEvent(context, Origin.CLIENT, null, message.body)
         } else {
-            AppChatSentEvent(context, Origin.CLIENT, null, message.body)
+            AppChatSentEvent(context, Origin.CLIENT, null, message.text)
         }
         pending.getOrPut(clientId) { java.util.Collections.synchronizedList(ArrayList()) }
-            .add(message.body)
+            .add(message.text.plain())
         ConnectionManager.send(clientId, eventPacket(event))
     }
 

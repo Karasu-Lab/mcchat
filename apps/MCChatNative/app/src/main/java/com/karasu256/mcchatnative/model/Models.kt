@@ -1,8 +1,10 @@
 package com.karasu256.mcchatnative.model
 
 import androidx.annotation.StringRes
+import com.karasu256.mcchat.common.component.ChatText
 import com.karasu256.mcchatnative.R
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 data class Client(
     val id: String,
@@ -34,7 +36,8 @@ data class StoredMessage(
     val body: String,
     val timestampMillis: Long,
     val replyId: Long? = null,
-    val isReply: Boolean = false,
+    val text: String? = null,
+    val eventId: String? = null,
     val world: World? = null,
 )
 
@@ -63,15 +66,17 @@ data class ChatMessage(
     val body: String,
     val timestampMillis: Long,
     val replyId: Long? = null,
-    val isReply: Boolean = false,
+    val text: ChatText = ChatText.raw(body),
+    val eventId: UUID? = null,
     val reactions: List<MessageReaction> = emptyList(),
     val world: World? = null,
 ) {
     fun isSentBy(userId: UserId): Boolean = sender.id == userId
 
-    fun isMentioning(userId: UserId, replyTarget: ChatMessage?): Boolean =
-        isReply && !isSentBy(userId) && replyTarget?.isSentBy(userId) == true
+    fun isMentioning(userId: UserId): Boolean = text.notifies(userId.uuid(), sender.id.uuid())
 }
+
+fun UserId.uuid(): UUID? = runCatching { UUID.fromString(value) }.getOrNull()
 
 @Serializable
 enum class ThreadCategory(@StringRes val labelRes: Int) {
@@ -99,11 +104,15 @@ sealed interface ChatEvent {
     data class Message(
         val id: Long,
         val sender: User,
-        val body: String,
+        val text: ChatText,
         val replyId: Long? = null,
-        val isReply: Boolean = false,
         val timestampMillis: Long = System.currentTimeMillis(),
-    ) : ChatEvent
+        val eventId: UUID? = null,
+    ) : ChatEvent {
+        val body: String get() = text.plain()
+    }
+
+    data class Delivered(val body: String, val eventId: UUID) : ChatEvent
 
     data class WorldChanged(
         val id: Long,

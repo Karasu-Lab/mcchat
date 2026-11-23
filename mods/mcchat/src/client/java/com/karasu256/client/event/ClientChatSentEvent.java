@@ -15,7 +15,7 @@ public final class ClientChatSentEvent extends ChatSentEvent {
   @Override
   public void handle() {
     if (origin() == Origin.CLIENT) {
-      ClientCapture.sendChat(content().orElse(""));
+      ClientCapture.sendChat(text());
     } else {
       super.handle();
     }
