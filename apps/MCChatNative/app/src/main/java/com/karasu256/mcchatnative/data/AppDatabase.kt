@@ -11,7 +11,6 @@ import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import com.karasu256.mcchatnative.model.ChatThread
 import com.karasu256.mcchatnative.model.ConnectionInfo
-import com.karasu256.mcchatnative.model.HistoryCleared
 import com.karasu256.mcchatnative.model.StoredMessage
 import com.karasu256.mcchatnative.model.ThreadCategory
 import com.karasu256.mcchatnative.model.World
@@ -49,31 +48,25 @@ abstract class AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertWorld(world: World)
 
-    @Query("SELECT * FROM messages WHERE host = :host ORDER BY position")
+    @Query("SELECT * FROM messages WHERE host = :host AND deletedAt IS NULL ORDER BY rowId")
     abstract suspend fun messages(host: String): List<StoredMessage>
 
-    @Query("DELETE FROM messages WHERE host = :host")
-    abstract suspend fun deleteMessages(host: String)
+    @Query("UPDATE messages SET deletedAt = :deletedAt WHERE host = :host AND deletedAt IS NULL")
+    abstract suspend fun deleteMessages(host: String, deletedAt: Long)
+
+    @Query("DELETE FROM messages WHERE host = :host AND deletedAt IS NULL")
+    abstract suspend fun deleteLiveMessages(host: String)
 
     @Insert
     abstract suspend fun insertMessages(messages: List<StoredMessage>)
 
-    @Query("SELECT clearedAt FROM history_cleared WHERE host = :host")
+    @Query("SELECT MAX(deletedAt) FROM messages WHERE host = :host")
     abstract suspend fun clearedAt(host: String): Long?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun upsertCleared(cleared: HistoryCleared)
 
     @Transaction
     open suspend fun replaceMessages(host: String, messages: List<StoredMessage>) {
-        deleteMessages(host)
+        deleteLiveMessages(host)
         insertMessages(messages)
-    }
-
-    @Transaction
-    open suspend fun clearMessages(host: String, clearedAt: Long) {
-        deleteMessages(host)
-        upsertCleared(HistoryCleared(host, clearedAt))
     }
 }
 
@@ -83,7 +76,6 @@ abstract class AppDao {
         ChatThread::class,
         World::class,
         StoredMessage::class,
-        HistoryCleared::class,
     ],
     version = 1,
     exportSchema = false,

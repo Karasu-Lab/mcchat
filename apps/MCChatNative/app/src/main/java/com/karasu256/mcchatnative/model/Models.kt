@@ -26,10 +26,10 @@ data class ConnectionInfo(
     val userName: String? = null,
 )
 
-@Entity(tableName = "messages", primaryKeys = ["host", "position"])
+@Entity(tableName = "messages", indices = [Index("host")])
 data class StoredMessage(
+    @PrimaryKey(autoGenerate = true) val rowId: Long = 0,
     val host: String,
-    val position: Int,
     val id: Long,
     val senderId: String,
     val senderName: String,
@@ -39,12 +39,7 @@ data class StoredMessage(
     val text: String? = null,
     val eventId: String? = null,
     @Embedded(prefix = "world_") val world: World? = null,
-)
-
-@Entity(tableName = "history_cleared")
-data class HistoryCleared(
-    @PrimaryKey val host: String,
-    val clearedAt: Long,
+    val deletedAt: Long? = null,
 )
 
 @Entity(tableName = "worlds")

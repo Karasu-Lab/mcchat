@@ -37,14 +37,13 @@ object ChatHistoryStore {
     suspend fun clearedAt(host: String): Long = dao?.clearedAt(host) ?: 0L
 
     suspend fun clear(host: String) {
-        dao?.clearMessages(host, System.currentTimeMillis())
+        dao?.deleteMessages(host, System.currentTimeMillis())
     }
 
     suspend fun save(host: String, messages: List<ChatMessage>) {
-        val stored = messages.mapIndexed { index, it ->
+        val stored = messages.map {
             StoredMessage(
                 host = host,
-                position = index,
                 id = it.id,
                 senderId = it.sender.id.value,
                 senderName = it.sender.name,
