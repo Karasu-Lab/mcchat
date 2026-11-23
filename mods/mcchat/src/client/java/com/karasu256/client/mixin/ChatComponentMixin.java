@@ -45,11 +45,10 @@ public abstract class ChatComponentMixin {
   private static boolean chatnative$mentionsMe(GuiMessage.Line line) {
     StringBuilder text = new StringBuilder();
     line.content()
-        .accept(
-            (index, style, codePoint) -> {
-              text.appendCodePoint(codePoint);
-              return true;
-            });
+        .accept((index, style, codePoint) -> {
+          text.appendCodePoint(codePoint);
+          return true;
+        });
     PlayerRef me = ClientCapture.sessionPlayer();
     return ChatText.parse(text.toString(), List.of(me)).mentioned().contains(me.uuid());
   }

@@ -44,8 +44,7 @@ public final class ClientCapture {
                 Origin.CLIENT,
                 sender == null ? null : PlayerRefs.of(sender),
                 ChatText.parse(
-                    signed != null ? signed.signedContent() : message.getString(),
-                    onlinePlayers()))
+                    signed != null ? signed.signedContent() : message.getString(), onlinePlayers()))
             .handle());
 
     ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
@@ -103,7 +102,8 @@ public final class ClientCapture {
 
   public static void sendChat(ChatText text) {
     outgoing = text;
-    String wire = ClientPlayNetworking.canSend(ChatTextPayload.TYPE) ? text.plain() : text.stripped().plain();
+    String wire =
+        ClientPlayNetworking.canSend(ChatTextPayload.TYPE) ? text.plain() : text.stripped().plain();
     sendToServer(wire, connection -> connection.sendChat(wire));
   }
 

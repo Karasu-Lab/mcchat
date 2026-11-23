@@ -64,7 +64,8 @@ public class ChatNative implements ModInitializer {
     serverTcp = new ServerTcpController(serverConfig());
     ServerCapture.register();
     ServerPlayNetworking.registerGlobalReceiver(
-        ChatTextPayload.TYPE, (payload, player, sender) -> ServerCapture.hold(player, payload.text()));
+        ChatTextPayload.TYPE,
+        (payload, player, sender) -> ServerCapture.hold(player, payload.text()));
 
     ServerLifecycleEvents.SERVER_STARTED.register(server -> {
       if (server.isDedicatedServer()) {
