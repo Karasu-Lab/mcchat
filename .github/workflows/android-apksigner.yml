@@ -1,0 +1,24 @@
+name: android-apksigner
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose APKs are inspected
+        required: true
+
+jobs:
+  sha256:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: download apks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ inputs.tag }}
+        run: gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --pattern '*.apk'
+      - name: print sha256 with apksigner
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner"
+          for apk in *.apk; do
+            echo "$apk"
+            "$apksigner" verify --print-certs "$apk"
+          done
