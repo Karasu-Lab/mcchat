@@ -28,13 +28,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.server.packs.PackType;
 import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.server.packs.PackType;
 
 public class ChatNativeClient implements ClientModInitializer {
   private static ChatUi chatUi;
@@ -87,8 +87,7 @@ public class ChatNativeClient implements ClientModInitializer {
 
     ClientPlayNetworking.registerGlobalReceiver(
         TypingBroadcastPayload.TYPE,
-        (payload, player, sender) ->
-            ChatLog.INSTANCE.typing(payload.player(), payload.started()));
+        (payload, player, sender) -> ChatLog.INSTANCE.typing(payload.player(), payload.started()));
 
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
       tcp.stop();
@@ -103,17 +102,21 @@ public class ChatNativeClient implements ClientModInitializer {
 
     ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
       if (screen instanceof ChatScreen) {
-        ScreenEvents.beforeRender(screen).register((current, graphics, mouseX, mouseY, delta) -> {
-          if (chatUi.isActive()) {
-            chatUi.render(current, graphics);
-          }
-        });
-        ScreenEvents.afterRender(screen).register((current, graphics, mouseX, mouseY, delta) ->
-            chatUi.renderHover(current, graphics, mouseX, mouseY));
-        ScreenMouseEvents.allowMouseClick(screen).register((current, mouseX, mouseY, button) ->
-            !chatUi.mouseClicked(current, mouseX, mouseY, button));
-        ScreenMouseEvents.allowMouseScroll(screen).register((current, mouseX, mouseY, horizontal, vertical) ->
-            !chatUi.mouseScrolled(current, mouseX, mouseY, vertical));
+        ScreenEvents.beforeRender(screen)
+            .register((current, graphics, mouseX, mouseY, delta) -> {
+              if (chatUi.isActive()) {
+                chatUi.render(current, graphics);
+              }
+            });
+        ScreenEvents.afterRender(screen)
+            .register((current, graphics, mouseX, mouseY, delta) ->
+                chatUi.renderHover(current, graphics, mouseX, mouseY));
+        ScreenMouseEvents.allowMouseClick(screen)
+            .register((current, mouseX, mouseY, button) ->
+                !chatUi.mouseClicked(current, mouseX, mouseY, button));
+        ScreenMouseEvents.allowMouseScroll(screen)
+            .register((current, mouseX, mouseY, horizontal, vertical) ->
+                !chatUi.mouseScrolled(current, mouseX, mouseY, vertical));
       }
     });
   }

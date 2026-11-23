@@ -1,11 +1,11 @@
 package com.karasu256.client.ui;
 
 import com.karasu256.ChatNative;
-import com.karasu256.client.ui.ChatLayout.MessageRow;
 import com.karasu256.client.chat.ChatTextRenderer;
 import com.karasu256.client.chat.MentionTarget;
-import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.client.mixin.ChatComponentInvoker;
+import com.karasu256.client.ui.ChatLayout.MessageRow;
+import com.karasu256.mcchat.common.PlayerRef;
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.List;
 import java.util.UUID;
@@ -18,8 +18,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.world.entity.player.ChatVisiblity;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.ChatVisiblity;
 
 public final class ChatUi {
   private final ChatTheme theme;
@@ -123,7 +123,8 @@ public final class ChatUi {
       }
       PlayerRef sender = row.message().sender();
       if (sender != null
-          && inside(x, y, m.listPadH, origin + cached.tops()[i] + row.avatarY(), m.avatar, m.avatar)) {
+          && inside(
+              x, y, m.listPadH, origin + cached.tops()[i] + row.avatarY(), m.avatar, m.avatar)) {
         g.renderComponentTooltip(
             font,
             ChatTextRenderer.playerInfo(sender.uuid(), sender.name()).getTooltipLines(),
@@ -140,7 +141,8 @@ public final class ChatUi {
               + (row.name() != null ? layout.scaledHeight(font) : 0);
       for (int line = 0; line < row.lines().size(); line++) {
         FormattedCharSequence text = row.lines().get(line);
-        if (inside(x, y, textX, textY + line * font.lineHeight, font.width(text), font.lineHeight)) {
+        if (inside(
+            x, y, textX, textY + line * font.lineHeight, font.width(text), font.lineHeight)) {
           Style style = font.getSplitter().componentStyleAtWidth(text, (int) (x - textX));
           HoverEvent.EntityTooltipInfo player =
               style == null || style.getHoverEvent() == null
@@ -166,8 +168,10 @@ public final class ChatUi {
     Region region =
         region(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
     build(client.font, region);
-    ChatLayout.Row last = cached.rows().isEmpty() ? null : cached.rows().get(cached.rows().size() - 1);
-    int typingExtra = last instanceof ChatLayout.TypingRow ? last.height() + theme.metrics.itemGap : 0;
+    ChatLayout.Row last =
+        cached.rows().isEmpty() ? null : cached.rows().get(cached.rows().size() - 1);
+    int typingExtra =
+        last instanceof ChatLayout.TypingRow ? last.height() + theme.metrics.itemGap : 0;
     draw(
         g,
         client.font,
@@ -271,9 +275,16 @@ public final class ChatUi {
   private void replyStatusClicked(Screen screen, double mouseX, double mouseY, int replyTop) {
     ChatTheme.Metrics m = theme.metrics;
     int buttonTop = replyTop;
-    if (inside(mouseX, mouseY, renderer.mentionToggleX(screen.width), buttonTop, m.replyButton, m.replyButton)) {
+    if (inside(
+        mouseX,
+        mouseY,
+        renderer.mentionToggleX(screen.width),
+        buttonTop,
+        m.replyButton,
+        m.replyButton)) {
       log.toggleMention();
-    } else if (inside(mouseX, mouseY, renderer.cancelX(screen.width), buttonTop, m.replyButton, m.replyButton)) {
+    } else if (inside(
+        mouseX, mouseY, renderer.cancelX(screen.width), buttonTop, m.replyButton, m.replyButton)) {
       log.cancelReply();
     }
   }

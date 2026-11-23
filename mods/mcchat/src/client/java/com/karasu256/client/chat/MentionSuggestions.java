@@ -33,7 +33,8 @@ public final class MentionSuggestions {
 
   private FormattedCharSequence styled(FormattedCharSequence base, int offset) {
     List<Style> styles = new ArrayList<>();
-    ChatTextRenderer.render(ChatText.parse(input.getValue(), ClientChatTextProcessor.onlinePlayers()))
+    ChatTextRenderer.render(
+            ChatText.parse(input.getValue(), ClientChatTextProcessor.onlinePlayers()))
         .visit(
             (style, content) -> {
               content.chars().forEach(character -> styles.add(style));
@@ -41,12 +42,11 @@ public final class MentionSuggestions {
             },
             Style.EMPTY);
     return sink ->
-        base.accept(
-            (index, style, codePoint) -> {
-              int absolute = offset + index;
-              Style rendered = absolute < styles.size() ? styles.get(absolute) : Style.EMPTY;
-              return sink.accept(index, rendered.applyTo(style), codePoint);
-            });
+        base.accept((index, style, codePoint) -> {
+          int absolute = offset + index;
+          Style rendered = absolute < styles.size() ? styles.get(absolute) : Style.EMPTY;
+          return sink.accept(index, rendered.applyTo(style), codePoint);
+        });
   }
 
   public void update() {

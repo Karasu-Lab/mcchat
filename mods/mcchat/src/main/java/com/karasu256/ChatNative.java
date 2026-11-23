@@ -90,8 +90,8 @@ public class ChatNative implements ModInitializer {
       }
     });
 
-    ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-        ServerTypingRelay.relay(handler.getPlayer(), false));
+    ServerPlayConnectionEvents.DISCONNECT.register(
+        (handler, server) -> ServerTypingRelay.relay(handler.getPlayer(), false));
 
     ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
       TCPServer tcp = serverTcp.tcp();

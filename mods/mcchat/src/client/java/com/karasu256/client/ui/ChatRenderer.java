@@ -77,8 +77,7 @@ final class ChatRenderer {
         m.avatar);
     int textX = avatarX + m.avatar + m.quoteGap;
     FormattedCharSequence text =
-        layout.quoteText(
-            font, target, Math.max(mentionToggleX(width) - m.quoteGap - textX, 0), 1f);
+        layout.quoteText(font, target, Math.max(mentionToggleX(width) - m.quoteGap - textX, 0), 1f);
     g.drawString(
         font,
         text,
@@ -163,13 +162,7 @@ final class ChatRenderer {
     int x = row.quoteX();
     int height = row.quoteHeight();
     fillRound(
-        g,
-        x,
-        top,
-        x + row.quoteWidth(),
-        top + height,
-        height / 2,
-        theme.colors.surfaceContainer);
+        g, x, top, x + row.quoteWidth(), top + height, height / 2, theme.colors.surfaceContainer);
     int avatarX = x + m.quotePadH;
     ChatLog.Message target = row.quoted();
     avatar(
@@ -249,8 +242,7 @@ final class ChatRenderer {
         bubbleY + bubbleHeight,
         m.corner,
         theme.colors.surfaceContainerHigh);
-    float phase =
-        (System.currentTimeMillis() % m.typingCycleMillis) / (float) m.typingCycleMillis;
+    float phase = (System.currentTimeMillis() % m.typingCycleMillis) / (float) m.typingCycleMillis;
     for (int i = 0; i < 3; i++) {
       float t = (phase - i * m.typingStagger + 1f) % 1f;
       float alpha = 0.3f + 0.7f * (t < 0.5f ? t * 2f : (1f - t) * 2f);

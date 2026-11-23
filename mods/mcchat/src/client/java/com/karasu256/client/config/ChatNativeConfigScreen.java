@@ -31,8 +31,7 @@ final class ChatNativeConfigScreen {
     clientCategory.addEntry(
         entries
             .startBooleanToggle(
-                Component.translatable("config.chatnative.use_vanilla_chat"),
-                client.useVanillaChat)
+                Component.translatable("config.chatnative.use_vanilla_chat"), client.useVanillaChat)
             .setDefaultValue(false)
             .setSaveConsumer(value -> client.useVanillaChat = value)
             .build());

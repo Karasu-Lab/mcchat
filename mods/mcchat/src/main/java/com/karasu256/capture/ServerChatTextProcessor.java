@@ -29,7 +29,8 @@ public final class ServerChatTextProcessor {
     return chatText.withoutReplyUnless(ChatNative.pipelineFor(server)::hasMessage);
   }
 
-  public static void announce(ServerPlayer sender, ChatReceivedEvent event, MinecraftServer server) {
+  public static void announce(
+      ServerPlayer sender, ChatReceivedEvent event, MinecraftServer server) {
     ReceivedChatTextPayload payload =
         new ReceivedChatTextPayload(event.id(), sender.getUUID(), event.text());
     for (ServerPlayer player : server.getPlayerList().getPlayers()) {

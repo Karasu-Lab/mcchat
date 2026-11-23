@@ -38,7 +38,8 @@ final class SvgRasterizer {
       BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
       Graphics2D graphics = image.createGraphics();
       graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-      graphics.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+      graphics.setRenderingHint(
+          RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
       graphics.transform(AffineTransform.getScaleInstance(size / viewWidth, size / viewHeight));
       graphics.setColor(Color.WHITE);
       graphics.fill(shape);
@@ -50,7 +51,10 @@ final class SvgRasterizer {
           out.setPixelRGBA(
               x,
               y,
-              (argb & 0xFF000000) | ((argb & 0xFF) << 16) | (argb & 0xFF00) | ((argb >> 16) & 0xFF));
+              (argb & 0xFF000000)
+                  | ((argb & 0xFF) << 16)
+                  | (argb & 0xFF00)
+                  | ((argb >> 16) & 0xFF));
         }
       }
       return out;
@@ -120,7 +124,13 @@ final class SvgRasterizer {
           case 'C' -> {
             controlX = ox + values[i + 2];
             controlY = oy + values[i + 3];
-            path.curveTo(ox + values[i], oy + values[i + 1], controlX, controlY, ox + values[i + 4], oy + values[i + 5]);
+            path.curveTo(
+                ox + values[i],
+                oy + values[i + 1],
+                controlX,
+                controlY,
+                ox + values[i + 4],
+                oy + values[i + 5]);
             x = ox + values[i + 4];
             y = oy + values[i + 5];
           }
@@ -129,7 +139,8 @@ final class SvgRasterizer {
             double firstY = 2 * y - controlY;
             controlX = ox + values[i];
             controlY = oy + values[i + 1];
-            path.curveTo(firstX, firstY, controlX, controlY, ox + values[i + 2], oy + values[i + 3]);
+            path.curveTo(
+                firstX, firstY, controlX, controlY, ox + values[i + 2], oy + values[i + 3]);
             x = ox + values[i + 2];
             y = oy + values[i + 3];
           }

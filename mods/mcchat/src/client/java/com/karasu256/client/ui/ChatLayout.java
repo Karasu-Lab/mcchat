@@ -81,7 +81,8 @@ final class ChatLayout {
       return line.getVisualOrderText();
     }
     FormattedText head = font.substrByWidth(line, Math.max(0, budget - font.width("…")));
-    return Language.getInstance().getVisualOrder(FormattedText.composite(head, FormattedText.of("…")));
+    return Language.getInstance()
+        .getVisualOrder(FormattedText.composite(head, FormattedText.of("…")));
   }
 
   Layout build(ChatLog log, List<UUID> typers, Font font, int width, boolean showOwnName) {
