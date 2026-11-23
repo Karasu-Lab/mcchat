@@ -2,6 +2,7 @@ package com.karasu256.client.mixin;
 
 import com.karasu256.client.ChatNativeClient;
 import com.karasu256.client.chat.ClientChatTextProcessor;
+import com.karasu256.client.ui.ChatLog;
 import java.util.List;
 import net.minecraft.client.GuiMessage;
 import net.minecraft.client.GuiMessageTag;
@@ -41,6 +42,11 @@ public abstract class ChatComponentMixin {
         ChatNativeClient.chatUi().renderHud(graphics, tickCount);
       }
     }
+  }
+
+  @Inject(method = "clearMessages", at = @At("HEAD"))
+  private void chatnative$clearLog(boolean clearHistory, CallbackInfo ci) {
+    ChatLog.INSTANCE.clear();
   }
 
   @Inject(method = "getMessageTagAt", at = @At("HEAD"), cancellable = true)

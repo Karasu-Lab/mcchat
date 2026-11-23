@@ -48,6 +48,10 @@ public class ChatNative implements ModInitializer {
     return pipeline;
   }
 
+  public static ServerTcpController serverTcp() {
+    return serverTcp;
+  }
+
   public static String levelId(MinecraftServer server) {
     return server
         .getWorldPath(LevelResource.ROOT)

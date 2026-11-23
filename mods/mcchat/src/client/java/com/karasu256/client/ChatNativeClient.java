@@ -58,6 +58,7 @@ public class ChatNativeClient implements ClientModInitializer {
     pipeline.setOnline(false, ClientCapture.sessionPlayer());
 
     tcp = new ClientTcpController(ChatNative.clientConfig(), pipeline, this::receive);
+    ChatNative.serverTcp().runWithoutServer();
 
     ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
       TCPServer server = tcp.tcp();

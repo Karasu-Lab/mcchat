@@ -4,7 +4,6 @@ import com.karasu256.client.chat.ChatTextRenderer;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +17,7 @@ import net.minecraft.util.FormattedCharSequence;
 final class ChatLayout {
   private final ChatTheme theme;
   private final DateTimeFormatter timeFormat =
-      DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault());
+      DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault());
 
   ChatLayout(ChatTheme theme) {
     this.theme = theme;

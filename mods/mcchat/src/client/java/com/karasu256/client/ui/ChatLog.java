@@ -92,6 +92,12 @@ public final class ChatLog {
     }
   }
 
+  public void clear() {
+    items.clear();
+    replyTarget = null;
+    version++;
+  }
+
   public void clearTyping() {
     if (!typing.isEmpty()) {
       typing.clear();
