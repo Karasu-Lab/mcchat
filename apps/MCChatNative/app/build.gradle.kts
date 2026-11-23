@@ -27,7 +27,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":modules:common"))
+    implementation(project(if (rootProject.name == "apps") ":common" else ":modules:common"))
     implementation(libs.androidx.datastore.okio)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.compose.destinations.core)
