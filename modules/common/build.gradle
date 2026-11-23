@@ -2,7 +2,12 @@ plugins {
 	id 'java-library'
 }
 
+group = 'com.karasu256.mcchat'
 version = '1.0.0'
+
+repositories {
+	mavenCentral()
+}
 
 dependencies {
 	api 'com.google.code.gson:gson:2.10.1'

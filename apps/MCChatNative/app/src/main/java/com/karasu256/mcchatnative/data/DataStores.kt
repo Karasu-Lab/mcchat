@@ -19,15 +19,17 @@ class JsonOkioSerializer<T>(
     private val serializer: KSerializer<T>,
     override val defaultValue: T,
 ) : OkioSerializer<T> {
+    private val json = Json { ignoreUnknownKeys = true }
+
     override suspend fun readFrom(source: BufferedSource): T =
         try {
-            Json.decodeFromString(serializer, source.readUtf8())
+            json.decodeFromString(serializer, source.readUtf8())
         } catch (e: SerializationException) {
             throw CorruptionException("Cannot read ${serializer.descriptor.serialName}", e)
         }
 
     override suspend fun writeTo(t: T, sink: BufferedSink) {
-        sink.writeUtf8(Json.encodeToString(serializer, t))
+        sink.writeUtf8(json.encodeToString(serializer, t))
     }
 }
 

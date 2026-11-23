@@ -2,9 +2,11 @@ package com.karasu256;
 
 import com.karasu256.capture.CapturePipeline;
 import com.karasu256.capture.ServerCapture;
+import com.karasu256.capture.ServerChatTextProcessor;
 import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.config.TcpConfig;
 import com.karasu256.net.CaptureEndpointPayload;
+import com.karasu256.net.ChatTextPayload;
 import com.karasu256.net.ServerTcpController;
 import com.karasu256.net.TCPServer;
 import net.fabricmc.api.ModInitializer;
@@ -62,6 +64,9 @@ public class ChatNative implements ModInitializer {
     pipeline = new CapturePipeline();
     serverTcp = new ServerTcpController(serverConfig());
     ServerCapture.register();
+    ServerPlayNetworking.registerGlobalReceiver(
+        ChatTextPayload.TYPE,
+        (payload, player, sender) -> ServerChatTextProcessor.hold(player, payload.text()));
 
     ServerLifecycleEvents.SERVER_STARTED.register(server -> {
       if (server.isDedicatedServer()) {

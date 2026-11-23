@@ -2,15 +2,19 @@ package com.karasu256.mcchatnative.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import com.karasu256.mcchat.common.component.ChatText
+import com.karasu256.mcchat.common.event.EventRegistry
 import com.karasu256.mcchatnative.model.ChatHistoryData
 import com.karasu256.mcchatnative.model.ChatMessage
 import com.karasu256.mcchatnative.model.StoredMessage
 import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
 import kotlinx.coroutines.flow.first
+import java.util.UUID
 
 object ChatHistoryStore {
     private var store: DataStore<ChatHistoryData>? = null
+    private val gson = EventRegistry.common().gson()
 
     @Synchronized
     fun init(context: Context) {
@@ -30,7 +34,9 @@ object ChatHistoryStore {
                 body = it.body,
                 timestampMillis = it.timestampMillis,
                 replyId = it.replyId,
-                isReply = it.isReply,
+                text = it.text?.let { json -> gson.fromJson(json, ChatText::class.java) }
+                    ?: ChatText.raw(it.body),
+                eventId = it.eventId?.let(UUID::fromString),
                 world = it.world,
             )
         }
@@ -55,7 +61,8 @@ object ChatHistoryStore {
                 body = it.body,
                 timestampMillis = it.timestampMillis,
                 replyId = it.replyId,
-                isReply = it.isReply,
+                text = gson.toJson(it.text),
+                eventId = it.eventId?.toString(),
                 world = it.world,
             )
         }
