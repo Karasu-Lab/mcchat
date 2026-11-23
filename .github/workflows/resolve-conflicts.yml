@@ -40,8 +40,6 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-      pull-requests: write
-      id-token: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
@@ -59,31 +57,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: merge base branch
-        id: merge
         run: |
+          printf 'CHANGELOG.md merge=union\n' >> .git/info/attributes
           git fetch origin "${{ matrix.base }}"
-          if git merge --no-edit "origin/${{ matrix.base }}"; then
-            echo "clean=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "clean=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: resolve conflicts
-        if: steps.merge.outputs.clean == 'false'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: --allowed-tools "Bash(git:*),Read,Edit,Write"
-          prompt: |
-            A merge of origin/${{ matrix.base }} into the checked-out branch
-            ${{ matrix.head }} (pull request #${{ matrix.number }}) stopped with conflicts.
-            Resolve every conflicted file so that the intent of both sides is kept,
-            remove all conflict markers, stage the files, and complete the merge
-            commit with `git commit --no-edit`. Do not push and do not change
-            files that are not conflicted.
-      - name: push resolved branch
-        run: |
-          if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
-            echo "Unresolved conflicts remain" >&2
-            exit 1
-          fi
-          git push origin "HEAD:${{ matrix.head }}"
+          git merge --no-edit "origin/${{ matrix.base }}"
+      - name: push merged branch
+        run: git push origin "HEAD:${{ matrix.head }}"
