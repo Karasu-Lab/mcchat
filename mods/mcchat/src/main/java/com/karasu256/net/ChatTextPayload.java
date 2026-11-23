@@ -14,9 +14,11 @@ public record ChatTextPayload(ChatText text) implements CustomPacketPayload {
       new Type<>(Identifier.fromNamespaceAndPath(ChatNative.MOD_ID, "chat_text"));
 
   public static final StreamCodec<RegistryFriendlyByteBuf, ChatTextPayload> CODEC =
-      ByteBufCodecs.STRING_UTF8.map(
-          json -> new ChatTextPayload(EventRegistry.common().gson().fromJson(json, ChatText.class)),
-          payload -> EventRegistry.common().gson().toJson(payload.text()))
+      ByteBufCodecs.STRING_UTF8
+          .map(
+              json ->
+                  new ChatTextPayload(EventRegistry.common().gson().fromJson(json, ChatText.class)),
+              payload -> EventRegistry.common().gson().toJson(payload.text()))
           .cast();
 
   @Override

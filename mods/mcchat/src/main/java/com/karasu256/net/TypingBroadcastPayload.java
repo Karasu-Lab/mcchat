@@ -9,8 +9,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
-public record TypingBroadcastPayload(UUID player, boolean started)
-    implements CustomPacketPayload {
+public record TypingBroadcastPayload(UUID player, boolean started) implements CustomPacketPayload {
   public static final Type<TypingBroadcastPayload> TYPE =
       new Type<>(Identifier.fromNamespaceAndPath(ChatNative.MOD_ID, "typing_broadcast"));
 

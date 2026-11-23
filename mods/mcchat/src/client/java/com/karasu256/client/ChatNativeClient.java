@@ -96,7 +96,9 @@ public class ChatNativeClient implements ClientModInitializer {
   private void registerChatUi() {
     ClientChatTextProcessor.listen(chat ->
         ChatLog.INSTANCE.received(
-            chat, ClientCapture.sessionPlayer().uuid(), Minecraft.getInstance().gui.hud.getGuiTicks()));
+            chat,
+            ClientCapture.sessionPlayer().uuid(),
+            Minecraft.getInstance().gui.hud.getGuiTicks()));
 
     ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
       if (screen instanceof ChatScreen) {

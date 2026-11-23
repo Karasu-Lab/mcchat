@@ -54,12 +54,7 @@ final class ChatRenderer {
   }
 
   private void replyRow(
-      GuiGraphicsExtractor g,
-      Font font,
-      ChatLog log,
-      ChatLog.Message target,
-      int width,
-      int top) {
+      GuiGraphicsExtractor g, Font font, ChatLog log, ChatLog.Message target, int width, int top) {
     ChatTheme.Metrics m = theme.metrics;
     g.fill(
         m.vanillaInputSide,
@@ -295,7 +290,8 @@ final class ChatRenderer {
     return id == null || connection == null ? null : connection.getPlayerInfo(id);
   }
 
-  private void avatar(GuiGraphicsExtractor g, Font font, UUID id, String name, int x, int y, int size) {
+  private void avatar(
+      GuiGraphicsExtractor g, Font font, UUID id, String name, int x, int y, int size) {
     PlayerInfo info = playerInfo(id);
     if (info == null) {
       fillRound(g, x, y, x + size, y + size, size / 2, theme.colors.surfaceContainerHighest);

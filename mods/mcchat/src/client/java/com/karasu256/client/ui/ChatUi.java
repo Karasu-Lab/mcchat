@@ -156,15 +156,14 @@ public final class ChatUi {
   private static Style styleAt(Font font, FormattedCharSequence text, int x) {
     int[] width = {0};
     Style[] found = {null};
-    text.accept(
-        (index, style, codepoint) -> {
-          width[0] += font.width(FormattedCharSequence.codepoint(codepoint, style));
-          if (x < width[0]) {
-            found[0] = style;
-            return false;
-          }
-          return true;
-        });
+    text.accept((index, style, codepoint) -> {
+      width[0] += font.width(FormattedCharSequence.codepoint(codepoint, style));
+      if (x < width[0]) {
+        found[0] = style;
+        return false;
+      }
+      return true;
+    });
     return found[0];
   }
 
@@ -202,8 +201,7 @@ public final class ChatUi {
         tickCount);
   }
 
-  private void draw(
-      GuiGraphicsExtractor g, Font font, Region region, int origin, Integer hudTick) {
+  private void draw(GuiGraphicsExtractor g, Font font, Region region, int origin, Integer hudTick) {
     double opacity = Minecraft.getInstance().options.chatOpacity().get() * 0.9 + 0.1;
     g.pose().pushMatrix();
     g.pose().translate(region.left(), 0);
