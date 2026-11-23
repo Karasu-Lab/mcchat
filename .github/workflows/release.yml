@@ -73,17 +73,26 @@ jobs:
           ./gradlew :modules:${{ matrix.name }}:setVersion -PnewVersion=${{ steps.changelog.outputs.version }}
       - name: create or update release pull request
         if: steps.changelog.outputs.skipped == 'false'
-        uses: peter-evans/create-pull-request@v8
-        with:
-          token: ${{ secrets.RELEASE_TOKEN || github.token }}
-          branch: release/${{ matrix.name }}
-          base: main
-          add-paths: |
-            CHANGELOG.md
-            ${{ matrix.version-file }}
-          commit-message: "release: ${{ matrix.name }} v${{ steps.changelog.outputs.version }}"
-          title: "release: ${{ matrix.name }} v${{ steps.changelog.outputs.version }}"
-          body: "Merging this pull request publishes ${{ matrix.name }} v${{ steps.changelog.outputs.version }}."
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: release/${{ matrix.name }}
+          TITLE: "release: ${{ matrix.name }} v${{ steps.changelog.outputs.version }}"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add CHANGELOG.md "${{ matrix.version-file }}"
+          git commit -m "$TITLE"
+          if git fetch origin "$BRANCH"; then
+            git merge -s ours --no-edit FETCH_HEAD
+          fi
+          git push origin "$BRANCH"
+          body="Merging this pull request publishes ${{ matrix.name }} v${{ steps.changelog.outputs.version }}."
+          if [ "$(gh pr list --head "$BRANCH" --state open --json number --jq length)" = "0" ]; then
+            gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$body"
+          else
+            gh pr edit "$BRANCH" --title "$TITLE" --body "$body"
+          fi
 
   publish:
     needs: modules
