@@ -1,8 +1,10 @@
 package com.karasu256.client.mixin;
 
 import com.karasu256.client.capture.ClientCapture;
+import com.karasu256.client.chat.ClientChatTextProcessor;
 import java.util.UUID;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,6 +20,11 @@ public abstract class ClientPacketListenerMixin {
     for (ClientboundPlayerInfoUpdatePacket.Entry entry : packet.newEntries()) {
       ClientCapture.playerJoined(entry.profile());
     }
+  }
+
+  @Inject(method = "handlePlayerChat", at = @At("TAIL"))
+  private void chatnative$onPlayerChatHandled(ClientboundPlayerChatPacket packet, CallbackInfo ci) {
+    ClientChatTextProcessor.finishChatMessage();
   }
 
   @Inject(method = "handlePlayerInfoRemove", at = @At("HEAD"))

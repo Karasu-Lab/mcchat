@@ -1,6 +1,7 @@
 package com.karasu256.capture;
 
 import com.karasu256.ChatNative;
+import com.karasu256.Threads;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.MinecraftScreen;
 import com.karasu256.mcchat.common.Origin;
@@ -17,6 +18,7 @@ import com.karasu256.mcchat.common.event.WorldChangedEvent;
 import com.karasu256.mcchat.common.event.WorldIconEvent;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -34,12 +36,16 @@ public final class CapturePipeline implements AutoCloseable, EventContext {
   private volatile boolean running = true;
 
   public CapturePipeline() {
-    this.worker = Thread.ofVirtual().name("chatnative-pipeline").unstarted(this::run);
+    this.worker = Threads.daemon("chatnative-pipeline", this::run);
     this.worker.start();
   }
 
   public void addSink(CaptureSink sink) {
     sinks.add(sink);
+  }
+
+  public void removeSink(CaptureSink sink) {
+    sinks.remove(sink);
   }
 
   public Origin authority() {
@@ -56,6 +62,10 @@ public final class CapturePipeline implements AutoCloseable, EventContext {
             context.icon().orElse(null));
     return new CapturedPacket(
         CapturedPacket.Type.SNAPSHOT, authority, current.withContext(withSkins), Optional.empty());
+  }
+
+  public boolean hasMessage(UUID eventId) {
+    return world.context().history().stream().anyMatch(event -> event.id().equals(eventId));
   }
 
   public void republishPlayers() {

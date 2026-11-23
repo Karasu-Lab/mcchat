@@ -1,6 +1,7 @@
 package com.karasu256.client.event;
 
 import com.karasu256.client.capture.ClientCapture;
+import com.karasu256.client.chat.ClientTypingNotifier;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.event.EventContext;
@@ -17,7 +18,10 @@ public final class ClientTypingStartedEvent extends TypingStartedEvent {
     Minecraft client = Minecraft.getInstance();
     if (origin() == Origin.CLIENT) {
       if (client.player != null && client.getConnection() != null) {
-        client.execute(() -> ClientCapture.relayTyping(true));
+        client.execute(() -> {
+          ClientCapture.relayTyping(true);
+          ClientTypingNotifier.typing(true);
+        });
       }
     } else if (!isLocalPlayer(client)) {
       super.handle();

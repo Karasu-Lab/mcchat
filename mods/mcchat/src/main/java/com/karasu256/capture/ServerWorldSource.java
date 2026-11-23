@@ -16,7 +16,7 @@ public final class ServerWorldSource extends WorldSource {
 
   public ServerWorldSource(MinecraftServer server) {
     super(
-        server.isDedicatedServer() ? "" : "localhost",
+        ChatNative.levelId(server),
         server.isDedicatedServer() ? server.getMotd() : server.getWorldData().getLevelName(),
         Origin.SERVER);
     this.iconFile = server.getWorldPath(LevelResource.ICON_FILE);

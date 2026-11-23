@@ -107,6 +107,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -118,6 +120,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.karasu256.mcchat.common.PlayerRef
+import com.karasu256.mcchat.common.component.ChatText
+import com.karasu256.mcchat.common.component.MentionData
 import com.karasu256.mcchatnative.R
 import com.karasu256.mcchatnative.model.ChatMessage
 import com.karasu256.mcchatnative.model.MessageReaction
@@ -226,12 +231,14 @@ private fun ChatContent(
                 currentUserId = state.currentUserId,
                 typingUsers = state.typingUsers.filter { it.id != state.currentUserId },
                 reactions = state.reactions,
+                replyableIds = state.replyableIds,
                 onReact = onReact,
                 onReplyToggle = onReplyToggle,
                 modifier = Modifier.weight(1f),
             )
             MessageInput(
                 draft = state.draft,
+                players = state.activeUsers.toPlayerRefs(),
                 canSend = state.canSend,
                 replyTarget = state.replyTarget,
                 mentionEnabled = state.mentionEnabled,
@@ -250,6 +257,7 @@ private fun MessageList(
     currentUserId: UserId,
     typingUsers: List<User>,
     reactions: List<ReactionData>,
+    replyableIds: Set<Long>,
     onReact: (Long, ReactionData) -> Unit,
     onReplyToggle: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -341,6 +349,7 @@ private fun MessageList(
                         reactions = reactions,
                         onReact = { onReact(message.id, it) },
                         onReply = { onReplyToggle(message.id) },
+                        replyEnabled = message.id in replyableIds,
                         flash = flash?.takeIf { it.messageId == message.id },
                         onReplyClick = {
                             message.replyId?.let { targetId ->
@@ -419,6 +428,7 @@ private fun MessageRow(
     reactions: List<ReactionData>,
     onReact: (ReactionData) -> Unit,
     onReply: () -> Unit,
+    replyEnabled: Boolean,
     flash: FlashRequest?,
     onReplyClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -441,7 +451,7 @@ private fun MessageRow(
     val state = remember { MutableTransitionState(!animateEnter) }
     state.targetState = true
     val isOwn = message.isSentBy(currentUserId)
-    val isMentioned = message.isMentioning(currentUserId, replyTarget)
+    val isMentioned = message.isMentioning(currentUserId)
     val origin = if (isOwn) endOrigin else startOrigin
 
     AnimatedVisibility(
@@ -450,7 +460,7 @@ private fun MessageRow(
         enter = chatItemEnter(origin),
         exit = chatItemExit(origin),
     ) {
-        SwipeToReply(onReply = onReply) {
+        SwipeToReply(onReply = onReply, enabled = replyEnabled) {
             MessageRowContent(
                 message,
                 isOwn,
@@ -634,7 +644,10 @@ private fun MessageLine(
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
-                    Text(message.body, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        message.text.annotated(MaterialTheme.colorScheme.primary),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                 }
             }
             ReactionPicker(
@@ -811,6 +824,7 @@ private fun TypingDots(
 @Composable
 private fun MessageInput(
     draft: String,
+    players: List<PlayerRef>,
     canSend: Boolean,
     replyTarget: ChatMessage?,
     mentionEnabled: Boolean,
@@ -822,6 +836,22 @@ private fun MessageInput(
     var lastTarget by remember { mutableStateOf(replyTarget) }
     SideEffect { if (replyTarget != null) lastTarget = replyTarget }
     val shownTarget = replyTarget ?: lastTarget
+
+    var field by remember { mutableStateOf(TextFieldValue(draft)) }
+    LaunchedEffect(draft) {
+        if (draft.isEmpty() && field.text.isNotEmpty()) field = TextFieldValue("")
+    }
+    val completion = remember(field, players) {
+        MentionData.complete(
+            ChatText.parse(field.text, players),
+            field.selection.start,
+            players,
+        ).orElse(null)
+    }
+    val mentionColor = MaterialTheme.colorScheme.primary
+    val transformation = remember(players, mentionColor) {
+        MentionVisualTransformation(players, mentionColor)
+    }
 
     Surface(color = MaterialTheme.colorScheme.surface) {
         Column(
@@ -850,20 +880,36 @@ private fun MessageInput(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                TextField(
-                    value = draft,
-                    onValueChange = onDraftChange,
-                    placeholder = { Text(stringResource(R.string.chat_input_hint)) },
-                    maxLines = 4,
-                    shape = MaterialTheme.shapes.extraLarge,
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                    ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { onSend() }),
-                    modifier = Modifier.weight(1f),
-                )
+                Box(modifier = Modifier.weight(1f)) {
+                    TextField(
+                        value = field,
+                        onValueChange = {
+                            field = it
+                            onDraftChange(it.text)
+                        },
+                        visualTransformation = transformation,
+                        placeholder = { Text(stringResource(R.string.chat_input_hint)) },
+                        maxLines = 4,
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { onSend() }),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    MentionSuggestions(
+                        completion = completion,
+                        onInsert = { inserted ->
+                            field = TextFieldValue(
+                                inserted.text().plain(),
+                                TextRange(inserted.cursor()),
+                            )
+                            onDraftChange(field.text)
+                        },
+                    )
+                }
                 val defaultColors = IconButtonDefaults.filledIconButtonColors()
                 val sendContainer by animateColorAsState(
                     if (canSend) defaultColors.containerColor else defaultColors.disabledContainerColor,

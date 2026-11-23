@@ -1,6 +1,7 @@
 package com.karasu256.net;
 
 import com.karasu256.ChatNative;
+import com.karasu256.Threads;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.PacketChannel;
 import com.karasu256.mcchat.common.event.EventRegistry;
@@ -9,10 +10,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,8 +50,35 @@ public final class TCPServer implements PacketChannel {
     socket.setReuseAddress(true);
     socket.bind(new InetSocketAddress(port));
     serverSocket = socket;
-    Thread.ofVirtual().name("chatnative-tcp-accept-" + port).start(() -> acceptLoop(socket));
-    ChatNative.LOGGER.info("TCP capture server listening on port {}", socket.getLocalPort());
+    Threads.start("chatnative-tcp-accept-" + port, () -> acceptLoop(socket));
+    List<String> addresses = classCAddresses();
+    if (addresses.isEmpty()) {
+      ChatNative.LOGGER.info("TCP capture server listening on port {}", socket.getLocalPort());
+    }
+    for (String address : addresses) {
+      ChatNative.LOGGER.info(
+          "TCP capture server listening on {}:{}", address, socket.getLocalPort());
+    }
+  }
+
+  private static List<String> classCAddresses() {
+    List<String> found = new ArrayList<>();
+    try {
+      for (NetworkInterface nic : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+        if (!nic.isUp() || nic.isLoopback()) {
+          continue;
+        }
+        for (InetAddress address : Collections.list(nic.getInetAddresses())) {
+          byte[] raw = address.getAddress();
+          if (raw.length == 4 && (raw[0] & 0xFF) == 192 && (raw[1] & 0xFF) == 168) {
+            found.add(address.getHostAddress());
+          }
+        }
+      }
+    } catch (SocketException e) {
+      ChatNative.LOGGER.warn("Cannot list network interfaces", e);
+    }
+    return found;
   }
 
   public int port() {
@@ -81,9 +115,7 @@ public final class TCPServer implements PacketChannel {
   public synchronized void connect(String host, int port, Consumer<Boolean> onState) {
     disconnectUpstream();
     Thread thread =
-        Thread.ofVirtual()
-            .name("chatnative-tcp-upstream")
-            .unstarted(() -> upstreamLoop(host, port, onState));
+        Threads.daemon("chatnative-tcp-upstream", () -> upstreamLoop(host, port, onState));
     upstreamThread = thread;
     thread.start();
   }
@@ -168,11 +200,11 @@ public final class TCPServer implements PacketChannel {
 
     void start() {
       startWriter();
-      Thread.ofVirtual().name("chatnative-tcp-read").start(this::readLoop);
+      Threads.start("chatnative-tcp-read", this::readLoop);
     }
 
     void startWriter() {
-      Thread.ofVirtual().name("chatnative-tcp-write").start(this::writeLoop);
+      Threads.start("chatnative-tcp-write", this::writeLoop);
     }
 
     void enqueue(String line) {

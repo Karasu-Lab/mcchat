@@ -20,24 +20,25 @@ public final class ServerCapture {
 
   public static void register() {
     ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
-      CapturePipeline pipeline = ChatNative.pipelineFor(sender.level().getServer());
-      new ChatReceivedEvent(
-              pipeline,
+      MinecraftServer server = sender.level().getServer();
+      ChatReceivedEvent event =
+          new ChatReceivedEvent(
+              ChatNative.pipelineFor(server),
               Origin.SERVER,
               PlayerRefs.of(sender.getGameProfile()),
-              message.signedContent())
-          .handle();
+              ServerChatTextProcessor.received(sender, message.signedContent(), server));
+      ServerChatTextProcessor.announce(sender, event, server);
+      event.handle();
     });
 
     ServerMessageEvents.COMMAND_MESSAGE.register((message, source, params) -> {
       CapturePipeline pipeline = ChatNative.pipelineFor(source.getServer());
+      ServerPlayer player = source.getPlayer();
       new ChatReceivedEvent(
               pipeline,
               Origin.SERVER,
-              source.getPlayer() == null
-                  ? null
-                  : PlayerRefs.of(source.getPlayer().getGameProfile()),
-              message.signedContent())
+              player == null ? null : PlayerRefs.of(player.getGameProfile()),
+              ServerChatTextProcessor.parse(message.signedContent(), source.getServer()))
           .handle();
     });
 
@@ -66,9 +67,6 @@ public final class ServerCapture {
 
   public static void commandExecuted(ServerPlayer player, String command) {
     MinecraftServer server = player.level().getServer();
-    if (!server.isDedicatedServer()) {
-      return;
-    }
     new CommandExecutedEvent(
             ChatNative.pipelineFor(server),
             Origin.SERVER,

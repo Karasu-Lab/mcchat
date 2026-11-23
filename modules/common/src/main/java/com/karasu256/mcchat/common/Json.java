@@ -11,10 +11,15 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import com.karasu256.mcchat.common.component.ChatTextComponent;
+import com.karasu256.mcchat.common.component.MentionData;
+import com.karasu256.mcchat.common.component.RawText;
+import com.karasu256.mcchat.common.component.ReplyData;
 import com.karasu256.mcchat.common.event.CapturedEvent;
 import com.karasu256.mcchat.common.event.EventRegistry;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Map;
 
 public final class Json {
   private Json() {}
@@ -24,7 +29,52 @@ public final class Json {
         .registerTypeAdapterFactory(new LowercaseEnumFactory())
         .registerTypeHierarchyAdapter(MinecraftScreen.class, new ScreenAdapter())
         .registerTypeAdapterFactory(new EventAdapterFactory(registry))
+        .registerTypeAdapterFactory(new ComponentAdapterFactory())
         .create();
+  }
+
+  private static final class ComponentAdapterFactory implements TypeAdapterFactory {
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> TypeAdapter<T> create(Gson gson, TypeToken<T> type) {
+      if (type.getRawType() != ChatTextComponent.class) {
+        return null;
+      }
+      TypeAdapterFactory self = this;
+      TypeAdapter<JsonElement> elements = gson.getAdapter(JsonElement.class);
+      return new TypeAdapter<T>() {
+        @Override
+        public void write(JsonWriter out, T value) throws IOException {
+          if (value == null) {
+            out.nullValue();
+            return;
+          }
+          TypeAdapter<T> delegate = gson.getDelegateAdapter(self, TypeToken.get((Class<T>) value.getClass()));
+          JsonObject tree = delegate.toJsonTree(value).getAsJsonObject();
+          tree.addProperty("type", ((ChatTextComponent) value).type());
+          elements.write(out, tree);
+        }
+
+        @Override
+        public T read(JsonReader in) throws IOException {
+          if (in.peek() == JsonToken.NULL) {
+            in.nextNull();
+            return null;
+          }
+          JsonObject tree = elements.read(in).getAsJsonObject();
+          Class<? extends ChatTextComponent> componentClass =
+              Map.<String, Class<? extends ChatTextComponent>>of(
+                      "raw", RawText.class,
+                      "reply", ReplyData.class,
+                      "mention", MentionData.class)
+                  .get(tree.get("type").getAsString());
+          if (componentClass == null) {
+            throw new JsonParseException("Unknown component type");
+          }
+          return (T) gson.getDelegateAdapter(self, TypeToken.get(componentClass)).fromJsonTree(tree);
+        }
+      };
+    }
   }
 
   private static final class EventAdapterFactory implements TypeAdapterFactory {

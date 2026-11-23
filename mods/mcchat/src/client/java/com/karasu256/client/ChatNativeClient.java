@@ -7,66 +7,70 @@ import com.karasu256.capture.ServerCapture;
 import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.client.capture.ClientCapture;
 import com.karasu256.client.capture.RemoteWorldSource;
-import com.karasu256.client.event.ClientChatSentEvent;
-import com.karasu256.client.event.ClientCommandExecutedEvent;
-import com.karasu256.client.event.ClientCommandSentEvent;
-import com.karasu256.client.event.ClientTypingStartedEvent;
-import com.karasu256.client.event.ClientTypingStoppedEvent;
+import com.karasu256.client.chat.ClientChatTextProcessor;
+import com.karasu256.client.ui.ChatLog;
+import com.karasu256.client.ui.ChatTheme;
+import com.karasu256.client.ui.ChatUi;
+import com.karasu256.client.ui.Shapes;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.WorldData;
+import com.karasu256.mcchat.common.WorldSource;
 import com.karasu256.mcchat.common.event.CapturedEvent;
 import com.karasu256.mcchat.common.event.CommandExecutedEvent;
-import com.karasu256.mcchat.common.event.EventRegistry;
 import com.karasu256.mcchat.common.event.PlayerListEvent;
 import com.karasu256.net.CaptureEndpointPayload;
+import com.karasu256.net.ReceivedChatTextPayload;
 import com.karasu256.net.TCPServer;
-import com.karasu256.net.TCPSink;
-import java.io.IOException;
+import com.karasu256.net.TypingBroadcastPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.server.IntegratedServer;
 
 public class ChatNativeClient implements ClientModInitializer {
-  private TCPServer tcp;
+  private static ChatUi chatUi;
+
+  private ClientTcpController tcp;
+
+  public static ChatUi chatUi() {
+    return chatUi;
+  }
 
   @Override
   public void onInitializeClient() {
     CapturePipeline pipeline = ChatNative.pipeline();
+    ChatTheme theme = ChatTheme.dark();
+    Shapes.register(theme.metrics);
+    chatUi = new ChatUi(theme);
+    registerChatUi();
+    ClientChatTextProcessor.register();
     ClientCapture.register();
     pipeline.setOnline(false, ClientCapture.sessionPlayer());
 
-    int port = ChatNative.config().clientPort;
-    EventRegistry registry =
-        new EventRegistry()
-            .register(ClientChatSentEvent.class)
-            .register(ClientCommandSentEvent.class)
-            .register(ClientCommandExecutedEvent.class)
-            .register(ClientTypingStartedEvent.class)
-            .register(ClientTypingStoppedEvent.class);
-    tcp = new TCPServer(pipeline::snapshot, this::receive, registry);
-    try {
-      tcp.start(port);
-      pipeline.addSink(new TCPSink(tcp));
-      ClientCapture.setUpstream(tcp::sendUpstream);
-    } catch (IOException e) {
-      ChatNative.LOGGER.error("Failed to open TCP port {}", port, e);
-      tcp = null;
-    }
+    tcp = new ClientTcpController(ChatNative.clientConfig(), pipeline, this::receive);
+    ChatNative.serverTcp().runWithoutServer();
 
     ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-      if (tcp != null) {
-        tcp.disconnectUpstream();
+      TCPServer server = tcp.tcp();
+      if (server != null) {
+        server.disconnectUpstream();
       }
       resetWorld(pipeline, client);
       pipeline.setOnline(true, ClientCapture.sessionPlayer());
       ClientCapture.submitPlayerList(client);
+      WorldData world = worldSource(client).world();
+      ChatLog.INSTANCE.worldJoined(world.id(), world.worldName());
     });
 
     ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+      ChatLog.INSTANCE.clearTyping();
       pipeline.clearIcon();
       pipeline.setOnline(false, ClientCapture.sessionPlayer());
     });
@@ -75,34 +79,74 @@ public class ChatNativeClient implements ClientModInitializer {
         CaptureEndpointPayload.TYPE,
         (payload, context) -> connectUpstream(pipeline, payload, context.client()));
 
+    ClientPlayNetworking.registerGlobalReceiver(
+        ReceivedChatTextPayload.TYPE,
+        (payload, context) -> ClientChatTextProcessor.structured(payload));
+
+    ClientPlayNetworking.registerGlobalReceiver(
+        TypingBroadcastPayload.TYPE,
+        (payload, context) -> ChatLog.INSTANCE.typing(payload.player(), payload.started()));
+
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-      if (tcp != null) {
-        tcp.close();
-      }
+      tcp.stop();
       pipeline.close();
     });
   }
 
+  private void registerChatUi() {
+    ClientChatTextProcessor.listen(chat ->
+        ChatLog.INSTANCE.received(
+            chat,
+            ClientCapture.sessionPlayer().uuid(),
+            Minecraft.getInstance().gui.hud.getGuiTicks()));
+
+    ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+      if (screen instanceof ChatScreen) {
+        ScreenEvents.beforeExtract(screen)
+            .register((current, graphics, mouseX, mouseY, delta) -> {
+              if (chatUi.isActive()) {
+                chatUi.render(current, graphics);
+              }
+            });
+        ScreenEvents.afterForeground(screen)
+            .register((current, graphics, mouseX, mouseY, delta) ->
+                chatUi.renderHover(current, graphics, mouseX, mouseY));
+        ScreenMouseEvents.allowMouseClick(screen)
+            .register((current, event) ->
+                !chatUi.mouseClicked(current, event.x(), event.y(), event.button()));
+        ScreenMouseEvents.allowMouseScroll(screen)
+            .register((current, mouseX, mouseY, horizontal, vertical) ->
+                !chatUi.mouseScrolled(current, mouseX, mouseY, vertical));
+      }
+    });
+  }
+
+  private static WorldSource worldSource(Minecraft client) {
+    IntegratedServer local = client.getSingleplayerServer();
+    return local != null
+        ? new ServerWorldSource(local)
+        : new RemoteWorldSource(client.getCurrentServer());
+  }
+
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
+    pipeline.reset(worldSource(client));
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
-      pipeline.reset(new ServerWorldSource(local));
       local.execute(() ->
           new PlayerListEvent(pipeline, Origin.SERVER, ServerCapture.onlinePlayers(local))
               .handle());
-      return;
     }
-    pipeline.reset(new RemoteWorldSource(client.getCurrentServer()));
   }
 
   private void connectUpstream(
       CapturePipeline pipeline, CaptureEndpointPayload payload, Minecraft client) {
-    if (tcp == null) {
+    TCPServer upstream = tcp.tcp();
+    if (upstream == null) {
       return;
     }
     ServerData server = client.getCurrentServer();
     String host = payload.host().isEmpty() && server != null ? hostOf(server.ip) : payload.host();
-    tcp.connect(
+    upstream.connect(
         host, payload.port(), up -> pipeline.setAuthority(up ? Origin.SERVER : Origin.CLIENT));
   }
 

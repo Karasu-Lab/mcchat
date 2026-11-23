@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"com.karasu256.client.ChatNativeClient"
+		],
+		"modmenu": [
+			"com.karasu256.client.config.ChatNativeModMenu"
 		]
 	},
 	"mixins": [
@@ -41,5 +44,9 @@
 		"minecraft": "~26.3",
 		"java": ">=25",
 		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*",
+		"cloth-config": "*"
 	}
 }
