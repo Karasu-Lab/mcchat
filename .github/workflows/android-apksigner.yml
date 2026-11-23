@@ -1,24 +1,30 @@
 name: android-apksigner
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Release tag whose APKs are inspected
-        required: true
 
 jobs:
   sha256:
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps
     steps:
-      - name: download apks
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ inputs.tag }}
-        run: gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --pattern '*.apk'
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: build
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
       - name: print sha256 with apksigner
         run: |
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner"
-          for apk in *.apk; do
-            echo "$apk"
+          for apk in MCChatNative/app/build/outputs/apk/*/*.apk; do
             "$apksigner" verify --print-certs "$apk"
           done
