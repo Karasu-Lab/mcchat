@@ -54,7 +54,6 @@ jobs:
         with:
           ref: ${{ matrix.head }}
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - name: configure git identity
         run: |
           git config user.name "github-actions[bot]"
@@ -73,7 +72,6 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.RELEASE_TOKEN || github.token }}
           claude_args: --allowed-tools "Bash(git:*),Read,Edit,Write"
           prompt: |
             A merge of origin/${{ matrix.base }} into the checked-out branch
