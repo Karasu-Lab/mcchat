@@ -57,10 +57,22 @@ jobs:
     needs: format
     runs-on: ubuntu-24.04
     steps:
+      - name: resolve ref
+        id: ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          ref="$BRANCH"
+          if ! gh api "repos/${GITHUB_REPOSITORY}/branches/${BRANCH}" --silent 2>/dev/null; then
+            merged="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state merged --json mergeCommit --jq '.[0].mergeCommit.oid // empty')"
+            ref="${merged:-$ref}"
+          fi
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
       - name: checkout repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ steps.ref.outputs.ref }}
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
       - name: setup jdk
