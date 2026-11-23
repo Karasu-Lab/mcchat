@@ -19,23 +19,30 @@ final class ChatNativeConfigScreen {
         ConfigBuilder.create()
             .setParentScreen(parent)
             .setTitle(Component.translatable("config.chatnative.title"))
-            .setSavingRunnable(
-                () -> {
-                  client.save();
-                  server.save();
-                });
+            .setSavingRunnable(() -> {
+              client.save();
+              server.save();
+            });
     ConfigEntryBuilder entries = builder.entryBuilder();
 
-    addToggle(builder.getOrCreateCategory(Component.translatable("config.chatnative.client")), entries, client);
-    addToggle(builder.getOrCreateCategory(Component.translatable("config.chatnative.server")), entries, server);
+    addToggle(
+        builder.getOrCreateCategory(Component.translatable("config.chatnative.client")),
+        entries,
+        client);
+    addToggle(
+        builder.getOrCreateCategory(Component.translatable("config.chatnative.server")),
+        entries,
+        server);
 
     return builder.build();
   }
 
-  private static void addToggle(ConfigCategory category, ConfigEntryBuilder entries, TcpConfig config) {
+  private static void addToggle(
+      ConfigCategory category, ConfigEntryBuilder entries, TcpConfig config) {
     category.addEntry(
         entries
-            .startBooleanToggle(Component.translatable("config.chatnative.tcp_enabled"), config.enabled)
+            .startBooleanToggle(
+                Component.translatable("config.chatnative.tcp_enabled"), config.enabled)
             .setDefaultValue(false)
             .setSaveConsumer(value -> config.enabled = value)
             .build());
