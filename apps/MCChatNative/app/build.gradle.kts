@@ -18,7 +18,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":common"))
+    implementation("com.karasu256.mcchat:common")
     implementation(libs.androidx.datastore.okio)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.compose.destinations.core)

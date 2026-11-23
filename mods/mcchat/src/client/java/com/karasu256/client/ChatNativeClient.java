@@ -7,21 +7,13 @@ import com.karasu256.capture.ServerCapture;
 import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.client.capture.ClientCapture;
 import com.karasu256.client.capture.RemoteWorldSource;
-import com.karasu256.client.event.ClientChatSentEvent;
-import com.karasu256.client.event.ClientCommandExecutedEvent;
-import com.karasu256.client.event.ClientCommandSentEvent;
-import com.karasu256.client.event.ClientTypingStartedEvent;
-import com.karasu256.client.event.ClientTypingStoppedEvent;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.event.CapturedEvent;
 import com.karasu256.mcchat.common.event.CommandExecutedEvent;
-import com.karasu256.mcchat.common.event.EventRegistry;
 import com.karasu256.mcchat.common.event.PlayerListEvent;
 import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.TCPServer;
-import com.karasu256.net.TCPSink;
-import java.io.IOException;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -31,7 +23,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.server.IntegratedServer;
 
 public class ChatNativeClient implements ClientModInitializer {
-  private TCPServer tcp;
+  private ClientTcpController tcp;
 
   @Override
   public void onInitializeClient() {
@@ -39,27 +31,12 @@ public class ChatNativeClient implements ClientModInitializer {
     ClientCapture.register();
     pipeline.setOnline(false, ClientCapture.sessionPlayer());
 
-    int port = ChatNative.config().clientPort;
-    EventRegistry registry =
-        new EventRegistry()
-            .register(ClientChatSentEvent.class)
-            .register(ClientCommandSentEvent.class)
-            .register(ClientCommandExecutedEvent.class)
-            .register(ClientTypingStartedEvent.class)
-            .register(ClientTypingStoppedEvent.class);
-    tcp = new TCPServer(pipeline::snapshot, this::receive, registry);
-    try {
-      tcp.start(port);
-      pipeline.addSink(new TCPSink(tcp));
-      ClientCapture.setUpstream(tcp::sendUpstream);
-    } catch (IOException e) {
-      ChatNative.LOGGER.error("Failed to open TCP port {}", port, e);
-      tcp = null;
-    }
+    tcp = new ClientTcpController(ChatNative.clientConfig(), pipeline, this::receive);
 
     ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-      if (tcp != null) {
-        tcp.disconnectUpstream();
+      TCPServer server = tcp.tcp();
+      if (server != null) {
+        server.disconnectUpstream();
       }
       resetWorld(pipeline, client);
       pipeline.setOnline(true, ClientCapture.sessionPlayer());
@@ -76,9 +53,7 @@ public class ChatNativeClient implements ClientModInitializer {
         (payload, player, sender) -> connectUpstream(pipeline, payload, Minecraft.getInstance()));
 
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-      if (tcp != null) {
-        tcp.close();
-      }
+      tcp.stop();
       pipeline.close();
     });
   }
@@ -97,12 +72,13 @@ public class ChatNativeClient implements ClientModInitializer {
 
   private void connectUpstream(
       CapturePipeline pipeline, CaptureEndpointPayload payload, Minecraft client) {
-    if (tcp == null) {
+    TCPServer upstream = tcp.tcp();
+    if (upstream == null) {
       return;
     }
     ServerData server = client.getCurrentServer();
     String host = payload.host().isEmpty() && server != null ? hostOf(server.ip) : payload.host();
-    tcp.connect(
+    upstream.connect(
         host, payload.port(), up -> pipeline.setAuthority(up ? Origin.SERVER : Origin.CLIENT));
   }
 

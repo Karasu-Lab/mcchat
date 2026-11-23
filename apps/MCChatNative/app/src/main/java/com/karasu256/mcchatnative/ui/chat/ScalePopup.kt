@@ -25,6 +25,7 @@ fun ScalePopup(
     enterMillis: Int = 200,
     exitMillis: Int = 150,
     initialScale: Float = 0.6f,
+    focusable: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val state = remember { MutableTransitionState(false) }
@@ -35,7 +36,7 @@ fun ScalePopup(
     Popup(
         popupPositionProvider = positionProvider,
         onDismissRequest = onDismissRequest,
-        properties = PopupProperties(focusable = true),
+        properties = PopupProperties(focusable = focusable),
     ) {
         AnimatedVisibility(
             visibleState = state,

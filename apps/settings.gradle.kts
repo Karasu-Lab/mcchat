@@ -24,5 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "apps"
 include(":MCChatNative:app")
-include(":common")
-project(":common").projectDir = file("../modules/common")
+includeBuild("../modules/common")

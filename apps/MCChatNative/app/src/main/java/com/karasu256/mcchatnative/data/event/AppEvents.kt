@@ -5,6 +5,7 @@ import com.karasu256.mcchat.common.Origin
 import com.karasu256.mcchat.common.PlayerRef
 import com.karasu256.mcchat.common.WorldData
 import com.karasu256.mcchat.common.WorldIcon
+import com.karasu256.mcchat.common.component.ChatText
 import com.karasu256.mcchat.common.event.CapturedEvent
 import com.karasu256.mcchat.common.event.ChatReceivedEvent
 import com.karasu256.mcchat.common.event.ChatSentEvent
@@ -41,19 +42,21 @@ object AppEvents {
         .register(AppWorldIconEvent::class.java)
 }
 
-private val ServerUser = User(UserId("server"), "Server")
-
 private fun senderOf(event: CapturedEvent): User =
-    event.player().orElse(null)?.let { User(UserId(it.uuid().toString()), it.name()) } ?: ServerUser
+    event.player().orElse(null)?.let { User(UserId(it.uuid().toString()), it.name()) }
+        ?: User(UserId("server"), "Server")
 
 private fun messageOf(event: MessageEvent, isCommand: Boolean): ChatEvent? {
-    val content = event.content().orElse(null)?.takeIf { it.isNotBlank() } ?: return null
-    val body = if (isCommand && !content.startsWith("/")) "/$content" else content
+    val plain = event.text().plain()
+    if (plain.isBlank()) return null
+    val text = if (isCommand && !plain.startsWith("/")) ChatText.raw("/$plain") else event.text()
     return ChatEvent.Message(
         id = event.id().leastSignificantBits,
         sender = senderOf(event),
-        body = body,
+        text = text,
+        replyId = text.replyTarget().orElse(null)?.leastSignificantBits,
         timestampMillis = event.timestampMillis(),
+        eventId = event.id(),
     )
 }
 
@@ -67,13 +70,13 @@ private fun typingOf(event: TypingEvent, isTyping: Boolean): ChatEvent? =
 private fun clientIdOf(event: CapturedEvent): String? =
     (event.context() as? AppEventContext)?.clientId
 
-class AppChatReceivedEvent(context: EventContext?, origin: Origin, player: PlayerRef?, content: String?) :
-    ChatReceivedEvent(context, origin, player, content), ChatEventProducer {
+class AppChatReceivedEvent(context: EventContext?, origin: Origin, player: PlayerRef?, text: ChatText) :
+    ChatReceivedEvent(context, origin, player, text), ChatEventProducer {
     override fun toChatEvent(world: WorldData): ChatEvent? = messageOf(this, isCommand = false)
 }
 
-class AppChatSentEvent(context: EventContext?, origin: Origin, player: PlayerRef?, content: String?) :
-    ChatSentEvent(context, origin, player, content), ChatEventProducer {
+class AppChatSentEvent(context: EventContext?, origin: Origin, player: PlayerRef?, text: ChatText) :
+    ChatSentEvent(context, origin, player, text), ChatEventProducer {
     override fun toChatEvent(world: WorldData): ChatEvent? = messageOf(this, isCommand = false)
 }
 

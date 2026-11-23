@@ -1,0 +1,6 @@
+{
+	"config.chatnative.title": "ChatNative",
+	"config.chatnative.client": "Client",
+	"config.chatnative.server": "Server",
+	"config.chatnative.tcp_enabled": "Enable the TCP server"
+}

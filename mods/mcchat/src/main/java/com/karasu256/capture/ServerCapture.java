@@ -20,24 +20,23 @@ public final class ServerCapture {
 
   public static void register() {
     ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
-      CapturePipeline pipeline = ChatNative.pipelineFor(sender.level().getServer());
+      MinecraftServer server = sender.level().getServer();
       new ChatReceivedEvent(
-              pipeline,
+              ChatNative.pipelineFor(server),
               Origin.SERVER,
               PlayerRefs.of(sender.getGameProfile()),
-              message.signedContent())
+              ServerChatTextProcessor.received(sender, message.signedContent(), server))
           .handle();
     });
 
     ServerMessageEvents.COMMAND_MESSAGE.register((message, source, params) -> {
       CapturePipeline pipeline = ChatNative.pipelineFor(source.getServer());
+      ServerPlayer player = source.getPlayer();
       new ChatReceivedEvent(
               pipeline,
               Origin.SERVER,
-              source.getPlayer() == null
-                  ? null
-                  : PlayerRefs.of(source.getPlayer().getGameProfile()),
-              message.signedContent())
+              player == null ? null : PlayerRefs.of(player.getGameProfile()),
+              ServerChatTextProcessor.parse(message.signedContent(), source.getServer()))
           .handle();
     });
 

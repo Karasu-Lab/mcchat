@@ -11,11 +11,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavBackStackEntry
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 
-private const val EnterMillis = 400
-private const val ExitMillis = 200
-private const val ParallaxDivisor = 4
-
 object PageTransitions : NavHostAnimatedDestinationStyle() {
+    private const val EnterMillis = 400
+    private const val ExitMillis = 200
+    private const val ParallaxDivisor = 4
+
     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
         {
             slideInHorizontally(tween(EnterMillis)) { it } + fadeIn(tween(EnterMillis))
