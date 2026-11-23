@@ -1,12 +1,9 @@
 package com.karasu256.mcchat.common;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.annotations.SerializedName;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,16 +21,21 @@ public final class CapturedData {
     OFFLINE,
     TYPING_STARTED,
     TYPING_STOPPED,
-    WORLD_CHANGED
+    WORLD_CHANGED,
+    WORLD_ICON
   }
 
   private final UUID id;
+  @SerializedName("timestamp")
   private final long timestampMillis;
+
   private final Origin origin;
   private final Kind kind;
-  private final Optional<PlayerRef> player;
-  private final Optional<String> content;
+  private final PlayerRef player;
+  private final String content;
   private final List<PlayerRef> players;
+  private final MinecraftScreen screen;
+  private final WorldIcon icon;
 
   public CapturedData(
       UUID id,
@@ -43,13 +45,28 @@ public final class CapturedData {
       Optional<PlayerRef> player,
       Optional<String> content,
       List<PlayerRef> players) {
+    this(id, timestampMillis, origin, kind, player, content, players, null, null);
+  }
+
+  private CapturedData(
+      UUID id,
+      long timestampMillis,
+      Origin origin,
+      Kind kind,
+      Optional<PlayerRef> player,
+      Optional<String> content,
+      List<PlayerRef> players,
+      MinecraftScreen screen,
+      WorldIcon icon) {
+    this.screen = screen;
+    this.icon = icon;
     this.id = id;
     this.timestampMillis = timestampMillis;
     this.origin = origin;
     this.kind = kind;
-    this.player = player;
-    this.content = content;
-    this.players = players;
+    this.player = player.orElse(null);
+    this.content = content.orElse(null);
+    this.players = players.isEmpty() ? null : players;
   }
 
   public UUID id() {
@@ -69,15 +86,50 @@ public final class CapturedData {
   }
 
   public Optional<PlayerRef> player() {
-    return player;
+    return Optional.ofNullable(player);
   }
 
   public Optional<String> content() {
-    return content;
+    return Optional.ofNullable(content);
   }
 
   public List<PlayerRef> players() {
-    return players;
+    return players == null ? Collections.emptyList() : players;
+  }
+
+  public Optional<MinecraftScreen> screen() {
+    return Optional.ofNullable(screen);
+  }
+
+  public Optional<WorldIcon> icon() {
+    return Optional.ofNullable(icon);
+  }
+
+  public static CapturedData status(
+      Origin origin, Kind kind, PlayerRef player, MinecraftScreen screen) {
+    return new CapturedData(
+        UUID.randomUUID(),
+        System.currentTimeMillis(),
+        origin,
+        kind,
+        Optional.ofNullable(player),
+        Optional.empty(),
+        Collections.emptyList(),
+        screen,
+        null);
+  }
+
+  public static CapturedData worldIcon(Origin origin, WorldIcon icon) {
+    return new CapturedData(
+        UUID.randomUUID(),
+        System.currentTimeMillis(),
+        origin,
+        Kind.WORLD_ICON,
+        Optional.empty(),
+        Optional.empty(),
+        Collections.emptyList(),
+        null,
+        icon);
   }
 
   public static CapturedData of(Origin origin, Kind kind, PlayerRef player, String content) {
@@ -102,39 +154,13 @@ public final class CapturedData {
         Collections.unmodifiableList(new ArrayList<>(players)));
   }
 
-  JsonObject toJson() {
-    JsonObject json = new JsonObject();
-    json.addProperty("id", id.toString());
-    json.addProperty("timestamp", timestampMillis);
-    json.addProperty("origin", origin.wireName());
-    json.addProperty("kind", kind.name().toLowerCase(Locale.ROOT));
-    player.ifPresent(p -> json.add("player", p.toJson()));
-    content.ifPresent(c -> json.addProperty("content", c));
-    if (!players.isEmpty()) {
-      JsonArray array = new JsonArray();
-      players.forEach(p -> array.add(p.toJson()));
-      json.add("players", array);
-    }
-    return json;
-  }
-
-  static CapturedData fromJson(JsonObject json) {
-    List<PlayerRef> players = new ArrayList<>();
-    if (json.has("players")) {
-      for (JsonElement element : json.getAsJsonArray("players")) {
-        players.add(PlayerRef.fromJson(element.getAsJsonObject()));
-      }
-    }
-    return new CapturedData(
-        UUID.fromString(json.get("id").getAsString()),
-        json.get("timestamp").getAsLong(),
-        Origin.fromWireName(json.get("origin").getAsString()),
-        Kind.valueOf(json.get("kind").getAsString().toUpperCase(Locale.ROOT)),
-        json.has("player")
-            ? Optional.of(PlayerRef.fromJson(json.getAsJsonObject("player")))
-            : Optional.empty(),
-        json.has("content") ? Optional.of(json.get("content").getAsString()) : Optional.empty(),
-        Collections.unmodifiableList(players));
+  boolean valid() {
+    return id != null
+        && origin != null
+        && kind != null
+        && (player == null || player.valid())
+        && (screen == null || screen.name() != null)
+        && (icon == null || icon.png() != null)        && players().stream().allMatch(p -> p != null && p.valid());
   }
 
   @Override
@@ -147,13 +173,15 @@ public final class CapturedData {
         && timestampMillis == other.timestampMillis
         && origin == other.origin
         && kind == other.kind
-        && player.equals(other.player)
-        && content.equals(other.content)
-        && players.equals(other.players);
+        && player().equals(other.player())
+        && content().equals(other.content())
+        && players().equals(other.players())
+        && screen().equals(other.screen())
+        && icon().equals(other.icon());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, timestampMillis, origin, kind, player, content, players);
+    return Objects.hash(id, timestampMillis, origin, kind, player(), content(), players(), screen(), icon());
   }
 }

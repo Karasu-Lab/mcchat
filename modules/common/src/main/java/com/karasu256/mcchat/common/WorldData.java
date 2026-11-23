@@ -1,6 +1,5 @@
 package com.karasu256.mcchat.common;
 
-import com.google.gson.JsonObject;
 import java.util.Objects;
 
 public final class WorldData {
@@ -11,7 +10,7 @@ public final class WorldData {
   public WorldData(String id, String worldName, WorldContext context) {
     this.id = id;
     this.worldName = worldName;
-    this.context = context;
+    this.context = context.equals(WorldContext.EMPTY) ? null : context;
   }
 
   public String id() {
@@ -23,7 +22,7 @@ public final class WorldData {
   }
 
   public WorldContext context() {
-    return context;
+    return context == null ? WorldContext.EMPTY : context;
   }
 
   public static WorldData empty(String id, String worldName) {
@@ -38,23 +37,8 @@ public final class WorldData {
     return withContext(WorldContext.EMPTY);
   }
 
-  JsonObject toJson() {
-    JsonObject json = new JsonObject();
-    json.addProperty("id", id);
-    json.addProperty("worldName", worldName);
-    if (!context.equals(WorldContext.EMPTY)) {
-      json.add("context", context.toJson());
-    }
-    return json;
-  }
-
-  static WorldData fromJson(JsonObject json) {
-    return new WorldData(
-        json.get("id").getAsString(),
-        json.get("worldName").getAsString(),
-        json.has("context")
-            ? WorldContext.fromJson(json.getAsJsonObject("context"))
-            : WorldContext.EMPTY);
+  boolean valid() {
+    return id != null && worldName != null && context().valid();
   }
 
   @Override
@@ -62,11 +46,11 @@ public final class WorldData {
     return o instanceof WorldData
         && id.equals(((WorldData) o).id)
         && worldName.equals(((WorldData) o).worldName)
-        && context.equals(((WorldData) o).context);
+        && context().equals(((WorldData) o).context());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, worldName, context);
+    return Objects.hash(id, worldName, context());
   }
 }

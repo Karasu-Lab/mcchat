@@ -4,7 +4,9 @@
 	"compatibilityLevel": "JAVA_17",
 	"client": [
 		"ChatScreenMixin",
-		"ClientPacketListenerMixin"
+		"ClientPacketListenerMixin",
+		"MinecraftMixin",
+		"ScreenMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

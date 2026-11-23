@@ -4,10 +4,12 @@ import com.karasu256.ChatNative;
 import com.karasu256.Threads;
 import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.MinecraftScreen;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.WorldContext;
 import com.karasu256.mcchat.common.WorldData;
+import com.karasu256.mcchat.common.WorldSource;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -23,6 +25,7 @@ public final class CapturePipeline implements AutoCloseable {
   private volatile Origin authority = Origin.CLIENT;
   private volatile boolean online;
   private volatile PlayerRef player;
+  private volatile MinecraftScreen screen;
   private volatile boolean running = true;
 
   public CapturePipeline() {
@@ -46,7 +49,10 @@ public final class CapturePipeline implements AutoCloseable {
     WorldData current = world;
     WorldContext context = current.context();
     WorldContext withSkins =
-        new WorldContext(SkinResolver.attachAll(context.players()), context.history());
+        new WorldContext(
+            SkinResolver.attachAll(context.players()),
+            context.history(),
+            context.icon().orElse(null));
     return new CapturedPacket(
         CapturedPacket.Type.SNAPSHOT, authority, current.withContext(withSkins), Optional.empty());
   }
@@ -66,9 +72,14 @@ public final class CapturePipeline implements AutoCloseable {
   }
 
   public void reset(String host, String worldName, Origin newAuthority) {
+    reset(new WorldSource(host, worldName, newAuthority));
+  }
+
+  public void reset(WorldSource source) {
+    WorldData next = source.world();
     enqueue(() -> {
-      authority = newAuthority;
-      world = WorldData.empty(host, worldName);
+      authority = source.origin();
+      world = next;
       emit(
           new CapturedPacket(
               CapturedPacket.Type.RESET,
@@ -82,9 +93,17 @@ public final class CapturePipeline implements AutoCloseable {
 
   public void adoptContext(WorldContext context) {
     enqueue(() -> {
-      world = world.withContext(context);
+      WorldContext adopted =
+          context.icon().isPresent()
+              ? context
+              : context.withIcon(world.context().icon().orElse(null));
+      world = world.withContext(adopted);
       emit(new CapturedPacket(CapturedPacket.Type.SNAPSHOT, authority, world, Optional.empty()));
     });
+  }
+
+  public void clearIcon() {
+    enqueue(() -> process(CapturedData.worldIcon(authority, null)));
   }
 
   public void publish(CapturedData data) {
@@ -99,14 +118,24 @@ public final class CapturePipeline implements AutoCloseable {
     });
   }
 
+  public void setScreen(MinecraftScreen current) {
+    enqueue(() -> {
+      screen = current;
+      emit(status());
+    });
+  }
+
   public void requestStatus() {
     enqueue(() -> emit(status()));
   }
 
   private CapturedPacket status() {
     CapturedData state =
-        CapturedData.of(
-            authority, online ? CapturedData.Kind.ONLINE : CapturedData.Kind.OFFLINE, player, null);
+        CapturedData.status(
+            authority,
+            online ? CapturedData.Kind.ONLINE : CapturedData.Kind.OFFLINE,
+            player,
+            screen);
     return new CapturedPacket(
         CapturedPacket.Type.STATUS, authority, world.withoutContext(), Optional.of(state));
   }

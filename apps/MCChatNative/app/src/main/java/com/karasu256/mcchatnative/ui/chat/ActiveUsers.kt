@@ -39,16 +39,14 @@ fun ActiveUsersAction(
     val description = stringResource(R.string.chat_active_users)
 
     Box(modifier = modifier) {
-        AvatarStack(
+        AnimatedAvatarStack(
+            users = headerUsers,
+            ringColor = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .clip(CircleShape)
                 .clickable { expanded = true }
                 .semantics { contentDescription = description },
-        ) {
-            headerUsers.forEach { user ->
-                UserAvatar(user, ringColor = MaterialTheme.colorScheme.surface)
-            }
-        }
+        )
         HeaderPopup(visible = expanded, onDismissRequest = { expanded = false }) {
             LazyColumn(
                 modifier = Modifier

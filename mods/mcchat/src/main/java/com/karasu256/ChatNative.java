@@ -2,6 +2,7 @@ package com.karasu256;
 
 import com.karasu256.capture.CapturePipeline;
 import com.karasu256.capture.ServerCapture;
+import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.config.ChatNativeConfig;
 import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedPacket;
@@ -84,7 +85,7 @@ public class ChatNative implements ModInitializer {
 
   private static void startDedicatedCapture(MinecraftServer server) {
     dedicatedPipeline = new CapturePipeline();
-    dedicatedPipeline.reset(levelId(server), server.getMotd(), Origin.SERVER);
+    dedicatedPipeline.reset(new ServerWorldSource(server));
     dedicatedPipeline.setOnline(true, null);
     dedicatedServer = openServerPort(dedicatedPipeline);
   }

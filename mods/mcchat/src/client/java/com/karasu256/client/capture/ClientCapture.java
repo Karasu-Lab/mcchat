@@ -6,6 +6,7 @@ import com.karasu256.capture.PlayerRefs;
 import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.MinecraftScreen;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.WorldData;
@@ -43,6 +44,10 @@ public final class ClientCapture {
 
     ClientSendMessageEvents.COMMAND.register(
         command -> submit(Kind.COMMAND_SENT, localPlayer(), command));
+  }
+
+  public static void screenChanged(MinecraftScreen screen) {
+    ChatNative.pipeline().setScreen(screen);
   }
 
   public static void setUpstream(Consumer<CapturedPacket> sender) {
