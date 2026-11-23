@@ -34,6 +34,10 @@ public final class CapturePipeline implements AutoCloseable {
     sinks.add(sink);
   }
 
+  public void removeSink(CaptureSink sink) {
+    sinks.remove(sink);
+  }
+
   public Origin authority() {
     return authority;
   }
