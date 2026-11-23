@@ -25,10 +25,30 @@ final class ChatNativeConfigScreen {
             });
     ConfigEntryBuilder entries = builder.entryBuilder();
 
-    addToggle(
-        builder.getOrCreateCategory(Component.translatable("config.chatnative.client")),
-        entries,
-        client);
+    ConfigCategory clientCategory =
+        builder.getOrCreateCategory(Component.translatable("config.chatnative.client"));
+    addToggle(clientCategory, entries, client);
+    clientCategory.addEntry(
+        entries
+            .startBooleanToggle(
+                Component.translatable("config.chatnative.use_vanilla_chat"), client.useVanillaChat)
+            .setDefaultValue(false)
+            .setSaveConsumer(value -> client.useVanillaChat = value)
+            .build());
+    clientCategory.addEntry(
+        entries
+            .startBooleanToggle(
+                Component.translatable("config.chatnative.show_own_typing"), client.showOwnTyping)
+            .setDefaultValue(false)
+            .setSaveConsumer(value -> client.showOwnTyping = value)
+            .build());
+    clientCategory.addEntry(
+        entries
+            .startBooleanToggle(
+                Component.translatable("config.chatnative.show_own_name"), client.showOwnName)
+            .setDefaultValue(false)
+            .setSaveConsumer(value -> client.showOwnName = value)
+            .build());
     addToggle(
         builder.getOrCreateCategory(Component.translatable("config.chatnative.server")),
         entries,

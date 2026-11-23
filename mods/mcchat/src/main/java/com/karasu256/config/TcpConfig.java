@@ -15,7 +15,9 @@ public final class TcpConfig {
 
   public boolean enabled = false;
   public int port;
-
+  public boolean useVanillaChat = false;
+  public boolean showOwnTyping = false;
+  public boolean showOwnName = false;
   private transient Path path;
   private transient List<Runnable> listeners;
 

@@ -2,6 +2,7 @@ package com.karasu256.capture;
 
 import com.karasu256.ChatNative;
 import com.karasu256.mcchat.common.component.ChatText;
+import com.karasu256.mcchat.common.event.ChatReceivedEvent;
 import com.karasu256.net.ReceivedChatTextPayload;
 import java.util.Map;
 import java.util.UUID;
@@ -25,16 +26,13 @@ public final class ServerChatTextProcessor {
     ChatText held = HELD_CHAT_TEXTS.remove(sender.getUUID());
     ChatText chatText =
         held != null && held.plain().equals(rawText) ? held : parse(rawText, server);
-    chatText = chatText.withoutReplyUnless(ChatNative.pipelineFor(server)::hasMessage);
-    announce(sender, chatText, server);
-    return chatText;
+    return chatText.withoutReplyUnless(ChatNative.pipelineFor(server)::hasMessage);
   }
 
-  private static void announce(ServerPlayer sender, ChatText chatText, MinecraftServer server) {
-    if (chatText.mentioned().isEmpty() && chatText.replyTarget().isEmpty()) {
-      return;
-    }
-    ReceivedChatTextPayload payload = new ReceivedChatTextPayload(sender.getUUID(), chatText);
+  public static void announce(
+      ServerPlayer sender, ChatReceivedEvent event, MinecraftServer server) {
+    ReceivedChatTextPayload payload =
+        new ReceivedChatTextPayload(event.id(), sender.getUUID(), event.text());
     for (ServerPlayer player : server.getPlayerList().getPlayers()) {
       if (ServerPlayNetworking.canSend(player, ReceivedChatTextPayload.TYPE)) {
         ServerPlayNetworking.send(player, payload);

@@ -1,10 +1,13 @@
 package com.karasu256.client.mixin;
 
 import com.karasu256.client.capture.ClientCapture;
+import com.karasu256.client.chat.ClientTypingNotifier;
 import com.karasu256.client.chat.MentionSuggestions;
+import com.karasu256.client.chat.MentionTarget;
 import com.karasu256.client.screen.ScreenTracked;
 import com.karasu256.mcchat.common.MinecraftChatScreen;
 import com.karasu256.mcchat.common.MinecraftScreen;
+import com.karasu256.mcchat.common.PlayerRef;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
@@ -17,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChatScreen.class)
-public abstract class ChatScreenMixin implements ScreenTracked {
+public abstract class ChatScreenMixin implements ScreenTracked, MentionTarget {
   @Shadow protected EditBox input;
 
   @Unique private MentionSuggestions chatnative$mentions;
@@ -25,6 +28,13 @@ public abstract class ChatScreenMixin implements ScreenTracked {
   @Override
   public MinecraftScreen chatnative$screen() {
     return new MinecraftChatScreen();
+  }
+
+  @Override
+  public void chatnative$insertMention(PlayerRef player) {
+    if (chatnative$mentions != null) {
+      chatnative$mentions.insertMention(player);
+    }
   }
 
   @Inject(method = "init", at = @At("TAIL"))
@@ -35,6 +45,7 @@ public abstract class ChatScreenMixin implements ScreenTracked {
   @Inject(method = "onEdited", at = @At("HEAD"))
   private void chatnative$onEdited(String text, CallbackInfo ci) {
     ClientCapture.typing(true);
+    ClientTypingNotifier.edited(text);
     if (chatnative$mentions != null) {
       chatnative$mentions.update();
     }
@@ -59,5 +70,6 @@ public abstract class ChatScreenMixin implements ScreenTracked {
   @Inject(method = "removed", at = @At("HEAD"))
   private void chatnative$onRemoved(CallbackInfo ci) {
     ClientCapture.typing(false);
+    ClientTypingNotifier.closed();
   }
 }

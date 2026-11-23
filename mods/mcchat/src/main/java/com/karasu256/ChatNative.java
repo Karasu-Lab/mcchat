@@ -3,12 +3,14 @@ package com.karasu256;
 import com.karasu256.capture.CapturePipeline;
 import com.karasu256.capture.ServerCapture;
 import com.karasu256.capture.ServerChatTextProcessor;
+import com.karasu256.capture.ServerTypingRelay;
 import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.config.TcpConfig;
 import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.ChatTextPayload;
 import com.karasu256.net.ServerTcpController;
 import com.karasu256.net.TCPServer;
+import com.karasu256.net.TypingPayload;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -46,6 +48,10 @@ public class ChatNative implements ModInitializer {
     return pipeline;
   }
 
+  public static ServerTcpController serverTcp() {
+    return serverTcp;
+  }
+
   public static String levelId(MinecraftServer server) {
     return server
         .getWorldPath(LevelResource.ROOT)
@@ -67,6 +73,9 @@ public class ChatNative implements ModInitializer {
     ServerPlayNetworking.registerGlobalReceiver(
         ChatTextPayload.TYPE,
         (payload, player, sender) -> ServerChatTextProcessor.hold(player, payload.text()));
+    ServerPlayNetworking.registerGlobalReceiver(
+        TypingPayload.TYPE,
+        (payload, player, sender) -> ServerTypingRelay.relay(player, payload.started()));
 
     ServerLifecycleEvents.SERVER_STARTED.register(server -> {
       if (server.isDedicatedServer()) {
@@ -84,6 +93,9 @@ public class ChatNative implements ModInitializer {
         dedicatedPipeline = null;
       }
     });
+
+    ServerPlayConnectionEvents.DISCONNECT.register(
+        (handler, server) -> ServerTypingRelay.relay(handler.getPlayer(), false));
 
     ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
       TCPServer tcp = serverTcp.tcp();

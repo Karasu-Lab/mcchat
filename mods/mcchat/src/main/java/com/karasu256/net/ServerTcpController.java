@@ -16,6 +16,8 @@ public final class ServerTcpController {
   private final TcpConfig config;
 
   private MinecraftServer server;
+  private boolean runsWithoutServer;
+  private CapturePipeline pipeline;
   private volatile TCPServer tcp;
   private TCPSink sink;
 
@@ -33,13 +35,20 @@ public final class ServerTcpController {
     apply();
   }
 
+  public synchronized void runWithoutServer() {
+    runsWithoutServer = true;
+    apply();
+  }
+
   public synchronized void detach() {
-    stop();
+    if (!runsWithoutServer) {
+      stop();
+    }
     server = null;
   }
 
   private synchronized void apply() {
-    if (server == null) {
+    if (server == null && !runsWithoutServer) {
       return;
     }
     if (tcp != null && (!config.enabled || tcp.port() != config.port)) {
@@ -51,7 +60,8 @@ public final class ServerTcpController {
   }
 
   private void start() {
-    CapturePipeline target = ChatNative.pipelineFor(server);
+    CapturePipeline target =
+        server == null ? ChatNative.pipeline() : ChatNative.pipelineFor(server);
     TCPServer opened =
         new TCPServer(
             target::snapshot,
@@ -74,9 +84,10 @@ public final class ServerTcpController {
       return;
     }
     tcp = opened;
+    pipeline = target;
     sink = new TCPSink(opened);
     target.addSink(sink);
-    if (server.isDedicatedServer()) {
+    if (server != null && server.isDedicatedServer()) {
       for (ServerPlayer player : server.getPlayerList().getPlayers()) {
         if (ServerPlayNetworking.canSend(player, CaptureEndpointPayload.TYPE)) {
           ServerPlayNetworking.send(player, new CaptureEndpointPayload("", opened.port()));
@@ -89,9 +100,10 @@ public final class ServerTcpController {
     if (tcp == null) {
       return;
     }
-    ChatNative.pipelineFor(server).removeSink(sink);
+    pipeline.removeSink(sink);
     tcp.close();
     tcp = null;
     sink = null;
+    pipeline = null;
   }
 }

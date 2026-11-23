@@ -3,9 +3,11 @@
 	"package": "com.karasu256.client.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"client": [
+		"ChatComponentInvoker",
 		"ChatComponentMixin",
 		"ChatScreenMixin",
 		"ClientPacketListenerMixin",
+		"EditBoxAccessor",
 		"MinecraftMixin",
 		"ScreenMixin"
 	],
