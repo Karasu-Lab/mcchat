@@ -14,7 +14,8 @@ android {
     defaultConfig {
         applicationId = "com.karasu256.mcchatnative"
         versionCode = major * 10000 + minor * 100 + patch
-        versionName = version.toString()
+        versionName = providers.gradleProperty("commitHash").orNull
+            ?.let { "$version-$it" } ?: version.toString()
         minSdk = 24
         targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

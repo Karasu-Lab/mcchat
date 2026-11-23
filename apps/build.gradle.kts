@@ -8,6 +8,10 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
+if (project == rootProject) {
+    apply(from = "../gradle/signing.gradle")
+}
+
 subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<ApplicationExtension> {
