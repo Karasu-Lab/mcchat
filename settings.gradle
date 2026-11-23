@@ -13,6 +13,10 @@ pluginManagement {
 rootProject.name = 'mcchat-workspace'
 
 dependencyResolutionManagement {
+	repositories {
+		google()
+		mavenCentral()
+	}
 	versionCatalogs {
 		create('libs') {
 			from(files('apps/gradle/libs.versions.toml'))
