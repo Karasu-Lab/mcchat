@@ -2,13 +2,13 @@ package com.karasu256.client.capture;
 
 import com.karasu256.ChatNative;
 import com.karasu256.capture.CapturePipeline;
+import com.karasu256.capture.PlayerRefs;
 import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.WorldData;
-import com.karasu256.capture.PlayerRefs;
 import com.mojang.authlib.GameProfile;
 import java.util.List;
 import java.util.Optional;
@@ -90,7 +90,10 @@ public final class ClientCapture {
     if (client.getConnection() == null) {
       return;
     }
-    client.getConnection().getOnlinePlayers().forEach(info -> ClientSkins.request(info.getProfile()));
+    client
+        .getConnection()
+        .getOnlinePlayers()
+        .forEach(info -> ClientSkins.request(info.getProfile()));
     List<PlayerRef> players =
         client.getConnection().getOnlinePlayers().stream()
             .map(info -> PlayerRefs.of(info.getProfile()))

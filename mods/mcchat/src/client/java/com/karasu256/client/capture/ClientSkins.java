@@ -34,7 +34,11 @@ public final class ClientSkins {
         .get(profile)
         .handleAsync(
             (skin, error) -> {
-              store(client, profile.id(), skin == null ? Optional.<PlayerSkin>empty() : skin, profile);
+              store(
+                  client,
+                  profile.id(),
+                  skin == null ? Optional.<PlayerSkin>empty() : skin,
+                  profile);
               return null;
             },
             client);
