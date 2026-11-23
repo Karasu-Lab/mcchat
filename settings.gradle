@@ -1,5 +1,6 @@
 pluginManagement {
 	repositories {
+		google()
 		maven {
 			name = 'Fabric'
 			url = 'https://maven.fabricmc.net/'
@@ -11,5 +12,15 @@ pluginManagement {
 
 rootProject.name = 'mcchat-workspace'
 
+dependencyResolutionManagement {
+	versionCatalogs {
+		create('libs') {
+			from(files('apps/gradle/libs.versions.toml'))
+		}
+	}
+}
+
 include 'mods:mcchat'
 file('modules').eachDir { include "modules:${it.name}" }
+include 'apps:MCChatNative:app'
+project(':apps:MCChatNative:app').projectDir = file('apps/MCChatNative/app')
