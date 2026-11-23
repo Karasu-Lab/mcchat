@@ -73,6 +73,7 @@ jobs:
         if: env.RELEASED == 'true'
         run: |
           {
+            echo
             echo "| File | Version | SHA256 |"
             echo "| --- | --- | --- |"
             for file in ${{ matrix.files }}; do
