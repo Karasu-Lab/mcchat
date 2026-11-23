@@ -123,9 +123,7 @@ import com.karasu256.mcchatnative.R
 import com.karasu256.mcchatnative.model.ChatMessage
 import com.karasu256.mcchatnative.model.MessageReaction
 import com.karasu256.mcchatnative.model.ReactionData
-import com.karasu256.mcchatnative.data.WorldRegistry
 import com.karasu256.mcchatnative.model.User
-import com.karasu256.mcchatnative.model.World
 import com.karasu256.mcchatnative.model.UserId
 import com.karasu256.mcchatnative.ui.PageTransitions
 import com.karasu256.mcchatnative.ui.StatusDot
@@ -378,29 +376,6 @@ private fun MessageList(
             TypingRow(typingUsers)
         }
         Spacer(Modifier.height(0.dp))
-    }
-}
-
-@Composable
-private fun WorldDivider(world: World) {
-    val registry by WorldRegistry.worlds.collectAsStateWithLifecycle()
-    val worldName = (registry[world.id] ?: world).name
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        HorizontalDivider(modifier = Modifier.weight(1f))
-        Text(
-            text = if (worldName.isBlank()) {
-                stringResource(R.string.chat_world_changed)
-            } else {
-                stringResource(R.string.chat_world_entered, worldName)
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        HorizontalDivider(modifier = Modifier.weight(1f))
     }
 }
 

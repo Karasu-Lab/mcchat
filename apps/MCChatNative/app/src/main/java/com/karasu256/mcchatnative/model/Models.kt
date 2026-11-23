@@ -44,11 +44,7 @@ data class ChatHistoryData(
 )
 
 @Serializable
-data class World(val id: String, val name: String) {
-    override fun equals(other: Any?): Boolean = other is World && other.id == id
-
-    override fun hashCode(): Int = id.hashCode()
-}
+data class World(val id: String, val name: String)
 
 @Serializable
 data class WorldStoreData(

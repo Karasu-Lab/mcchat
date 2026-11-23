@@ -38,7 +38,7 @@ object WorldRegistry {
         if (_worlds.value[world.id]?.name == world.name) return
         _worlds.update { it + (world.id to world) }
         scope.launch {
-            store?.updateData { data -> data.copy(worlds = data.worlds.filter { it != world } + world) }
+            store?.updateData { data -> data.copy(worlds = data.worlds.filter { it.id != world.id } + world) }
         }
     }
 }
