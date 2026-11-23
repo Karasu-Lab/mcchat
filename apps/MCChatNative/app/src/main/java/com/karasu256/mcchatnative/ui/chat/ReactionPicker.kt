@@ -89,7 +89,12 @@ fun ReactionPicker(
 }
 
 @Composable
-private fun ReactionItem(reaction: ReactionData, index: Int, selected: Boolean, onClick: () -> Unit) {
+private fun ReactionItem(
+    reaction: ReactionData,
+    index: Int,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
     val selectedColor = MaterialTheme.colorScheme.secondaryContainer
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {

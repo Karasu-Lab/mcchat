@@ -5,7 +5,7 @@ plugins {
 version = '1.0.0'
 
 dependencies {
-	api 'com.google.code.gson:gson:2.13.1'
+	api 'com.google.code.gson:gson:2.10.1'
 }
 
 tasks.withType(JavaCompile).configureEach {

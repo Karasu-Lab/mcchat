@@ -1,8 +1,5 @@
 package com.karasu256.mcchat.common;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -18,13 +15,13 @@ public final class CapturedPacket {
   private final Type type;
   private final Origin authority;
   private final WorldData world;
-  private final Optional<CapturedData> data;
+  private final CapturedData data;
 
   public CapturedPacket(Type type, Origin authority, WorldData world, Optional<CapturedData> data) {
     this.type = type;
     this.authority = authority;
     this.world = world;
-    this.data = data;
+    this.data = data.orElse(null);
   }
 
   public Type type() {
@@ -40,7 +37,7 @@ public final class CapturedPacket {
   }
 
   public Optional<CapturedData> data() {
-    return data;
+    return Optional.ofNullable(data);
   }
 
   public static CapturedPacket event(Origin authority, WorldData world, CapturedData data) {
@@ -48,25 +45,20 @@ public final class CapturedPacket {
   }
 
   public String encode() {
-    JsonObject json = new JsonObject();
-    json.addProperty("type", type.name().toLowerCase(Locale.ROOT));
-    json.addProperty("authority", authority.wireName());
-    json.add("world", world.toJson());
-    data.ifPresent(d -> json.add("data", d.toJson()));
-    return json.toString();
+    return Json.GSON.toJson(this);
   }
 
   public static Optional<CapturedPacket> decode(String line) {
     try {
-      JsonObject json = JsonParser.parseString(line).getAsJsonObject();
-      return Optional.of(
-          new CapturedPacket(
-              Type.valueOf(json.get("type").getAsString().toUpperCase(Locale.ROOT)),
-              Origin.fromWireName(json.get("authority").getAsString()),
-              WorldData.fromJson(json.getAsJsonObject("world")),
-              json.has("data")
-                  ? Optional.of(CapturedData.fromJson(json.getAsJsonObject("data")))
-                  : Optional.empty()));
+      CapturedPacket packet = Json.GSON.fromJson(line, CapturedPacket.class);
+      boolean valid =
+          packet != null
+              && packet.type != null
+              && packet.authority != null
+              && packet.world != null
+              && packet.world.valid()
+              && (packet.data == null || packet.data.valid());
+      return valid ? Optional.of(packet) : Optional.empty();
     } catch (RuntimeException e) {
       return Optional.empty();
     }
@@ -78,11 +70,11 @@ public final class CapturedPacket {
         && type == ((CapturedPacket) o).type
         && authority == ((CapturedPacket) o).authority
         && world.equals(((CapturedPacket) o).world)
-        && data.equals(((CapturedPacket) o).data);
+        && data().equals(((CapturedPacket) o).data());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, authority, world, data);
+    return Objects.hash(type, authority, world, data());
   }
 }

@@ -29,6 +29,13 @@
 			"environment": "client"
 		}
 	],
+	"custom": {
+		"loom:injected_interfaces": {
+			"net/minecraft/class_437": [
+				"com/karasu256/client/screen/ScreenTracked"
+			]
+		}
+	},
 	"depends": {
 		"fabricloader": ">=0.20.1",
 		"minecraft": "~1.20.4",

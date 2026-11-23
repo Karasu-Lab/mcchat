@@ -70,7 +70,6 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -148,11 +147,11 @@ private val EndOrigin = TransformOrigin(1f, 0.5f)
 private object ChatItemMotion {
     fun enter(origin: TransformOrigin): EnterTransition =
         fadeIn(tween(RowEnterMillis)) +
-            scaleIn(tween(RowEnterMillis), initialScale = 0.6f, transformOrigin = origin)
+                scaleIn(tween(RowEnterMillis), initialScale = 0.6f, transformOrigin = origin)
 
     fun exit(origin: TransformOrigin): ExitTransition =
         fadeOut(tween(RowExitMillis)) +
-            scaleOut(tween(RowExitMillis), targetScale = 0.6f, transformOrigin = origin)
+                scaleOut(tween(RowExitMillis), targetScale = 0.6f, transformOrigin = origin)
 }
 
 private data class FlashRequest(val messageId: Long, val nonce: Int)
@@ -233,7 +232,11 @@ private fun ChatContent(
         },
         contentWindowInsets = WindowInsets(0),
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).imePadding()) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .imePadding()
+        ) {
             MessageList(
                 messages = state.messages,
                 currentUserId = state.currentUserId,
@@ -269,7 +272,9 @@ private fun MessageList(
 ) {
     if (messages.isEmpty() && typingUsers.isEmpty()) {
         Column(
-            modifier = modifier.fillMaxSize().clearFocusOnTap(),
+            modifier = modifier
+                .fillMaxSize()
+                .clearFocusOnTap(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -356,7 +361,10 @@ private fun MessageList(
                             message.replyId?.let { targetId ->
                                 tops[targetId]?.let { top ->
                                     scope.launch {
-                                        scroll.animateScrollTo(top, tween(ScrollMillis, easing = FastOutSlowInEasing))
+                                        scroll.animateScrollTo(
+                                            top,
+                                            tween(ScrollMillis, easing = FastOutSlowInEasing)
+                                        )
                                         flash = FlashRequest(targetId, (flash?.nonce ?: 0) + 1)
                                     }
                                 }
@@ -453,7 +461,14 @@ private fun MessageRow(
     ) {
         SwipeToReply(onReply = onReply) {
             MessageRowContent(
-                message, isOwn, isMentioned, currentUserId, replyTarget, reactions, onReact, onReplyClick,
+                message,
+                isOwn,
+                isMentioned,
+                currentUserId,
+                replyTarget,
+                reactions,
+                onReact,
+                onReplyClick,
                 flashAlpha = { flashAlpha.value },
             )
         }
@@ -607,8 +622,16 @@ private fun MessageLine(
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     AnimatedVisibility(
                         visible = !isOwn,
-                        enter = fadeIn(tween(OwnershipMillis)) + expandVertically(tween(OwnershipMillis)),
-                        exit = fadeOut(tween(OwnershipMillis)) + shrinkVertically(tween(OwnershipMillis)),
+                        enter = fadeIn(tween(OwnershipMillis)) + expandVertically(
+                            tween(
+                                OwnershipMillis
+                            )
+                        ),
+                        exit = fadeOut(tween(OwnershipMillis)) + shrinkVertically(
+                            tween(
+                                OwnershipMillis
+                            )
+                        ),
                     ) {
                         Text(
                             text = message.sender.name,
@@ -622,7 +645,8 @@ private fun MessageLine(
             ReactionPicker(
                 visible = pickerVisible,
                 reactions = reactions,
-                selected = message.reactions.filter { it.isReactedBy(currentUserId) }.mapTo(HashSet()) { it.data },
+                selected = message.reactions.filter { it.isReactedBy(currentUserId) }
+                    .mapTo(HashSet()) { it.data },
                 onReact = {
                     onReact(it)
                     pickerVisible = false
@@ -650,7 +674,11 @@ private fun animatedOwnBias(isOwn: Boolean): Float =
     animateFloatAsState(if (isOwn) 1f else -1f, tween(OwnershipMillis)).value
 
 @Composable
-private fun ReplyContainer(target: ChatMessage, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ReplyContainer(
+    target: ChatMessage,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.large,
@@ -722,11 +750,16 @@ private fun TypingRow(users: List<User>, modifier: Modifier = Modifier) {
         } else {
             val known = roster.mapTo(HashSet()) { it.user.id }
             val animate = roster.isNotEmpty()
-            roster = roster + users.filter { it.id !in known }.map { TypingEntry(it, animateEnter = animate) }
+            roster = roster + users.filter { it.id !in known }
+                .map { TypingEntry(it, animateEnter = animate) }
         }
     }
 
-    Box(modifier = modifier.fillMaxWidth().animateContentSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize()
+    ) {
         AnimatedVisibility(
             visible = users.isNotEmpty(),
             enter = ChatItemMotion.enter(StartOrigin),
@@ -769,8 +802,16 @@ private fun TypingAvatar(
 
     AnimatedVisibility(
         visibleState = state,
-        enter = slideInHorizontally(tween(AvatarEnterMillis)) { -it } + fadeIn(tween(AvatarEnterMillis)),
-        exit = scaleOut(tween(AvatarExitMillis), targetScale = 0.6f) + fadeOut(tween(AvatarExitMillis)),
+        enter = slideInHorizontally(tween(AvatarEnterMillis)) { -it } + fadeIn(
+            tween(
+                AvatarEnterMillis
+            )
+        ),
+        exit = scaleOut(tween(AvatarExitMillis), targetScale = 0.6f) + fadeOut(
+            tween(
+                AvatarExitMillis
+            )
+        ),
     ) {
         UserAvatar(user, ringColor = MaterialTheme.colorScheme.surface)
     }

@@ -53,7 +53,8 @@ fun UserAvatar(
     ringColor: Color = Color.Transparent,
     size: Dp = AvatarSize,
 ) {
-    val style = if (size < AvatarSize) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge
+    val style =
+        if (size < AvatarSize) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge
     val version by SkinCache.version.collectAsStateWithLifecycle()
     val face by produceState<ImageBitmap?>(null, user.id, version) {
         value = withContext(Dispatchers.Default) { SkinCache.get(user.id.value)?.let(::faceOf) }

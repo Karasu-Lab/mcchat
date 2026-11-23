@@ -7,12 +7,12 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,7 +40,10 @@ fun SplashScreen(modifier: Modifier = Modifier) {
     val shift by transition.animateFloat(
         initialValue = 0f,
         targetValue = GradientSpan * 2,
-        animationSpec = infiniteRepeatable(tween(CycleMillis, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(
+            tween(CycleMillis, easing = LinearEasing),
+            RepeatMode.Restart
+        ),
         label = "shift",
     )
 

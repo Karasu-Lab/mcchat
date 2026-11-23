@@ -54,7 +54,10 @@ class SearchViewModel : ViewModel() {
         if (terms.isEmpty()) return clients
         return clients.filter { client ->
             terms.any { term ->
-                client.name.contains(term, ignoreCase = true) || client.address.contains(term, ignoreCase = true)
+                client.name.contains(term, ignoreCase = true) || client.address.contains(
+                    term,
+                    ignoreCase = true
+                )
             }
         }
     }

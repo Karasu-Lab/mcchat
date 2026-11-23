@@ -42,9 +42,17 @@ fun ScalePopup(
             visibleState = state,
             modifier = modifier,
             enter = fadeIn(tween(PopupEnterMillis)) +
-                scaleIn(tween(PopupEnterMillis), initialScale = PopupInitialScale, transformOrigin = transformOrigin),
+                    scaleIn(
+                        tween(PopupEnterMillis),
+                        initialScale = PopupInitialScale,
+                        transformOrigin = transformOrigin
+                    ),
             exit = fadeOut(tween(PopupExitMillis)) +
-                scaleOut(tween(PopupExitMillis), targetScale = PopupInitialScale, transformOrigin = transformOrigin),
+                    scaleOut(
+                        tween(PopupExitMillis),
+                        targetScale = PopupInitialScale,
+                        transformOrigin = transformOrigin
+                    ),
         ) {
             content()
         }

@@ -21,7 +21,11 @@ class ConnectionStore(context: Context) {
             if (data.connections.any { it.host == host && it.port == port }) {
                 data
             } else {
-                data.copy(connections = data.connections + ConnectionInfo(UUID.randomUUID().toString(), host, port))
+                data.copy(
+                    connections = data.connections + ConnectionInfo(
+                        UUID.randomUUID().toString(), host, port
+                    )
+                )
             }
         }
     }
