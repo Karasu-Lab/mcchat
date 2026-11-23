@@ -6,8 +6,6 @@ tasks.register('releaseMatrix') {
 		[
 			name: it.name,
 			path: it.property('releasePath'),
-			'version-file': it.property('releaseVersionFile'),
-			'fallback-version': it.property('releaseFallbackVersion'),
 			'working-directory': it.property('releaseWorkingDirectory'),
 			tasks: it.property('releaseTasks'),
 			files: it.property('releaseFiles')
@@ -19,17 +17,6 @@ tasks.register('releaseMatrix') {
 }
 
 subprojects {
-	if (path.startsWith(':modules:')) {
-		tasks.register('setVersion') {
-			group = 'release'
-			def versionFile = rootProject.file(project.property('releaseVersionFile'))
-			def newVersion = providers.gradleProperty('newVersion')
-			doLast {
-				versionFile.text = versionFile.text.replaceFirst(/(?m)^version=.*$/, "version=${newVersion.get()}")
-			}
-		}
-	}
-
 	plugins.withId('java') {
 		def javaVersion = JavaVersion.toVersion(rootProject.java_version)
 

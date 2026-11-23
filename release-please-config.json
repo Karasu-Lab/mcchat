@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "draft": true,
+  "packages": {
+    "mods/mcchat": {
+      "release-type": "simple",
+      "component": "mcchat",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "gradle.properties"
+        }
+      ]
+    },
+    "apps/MCChatNative": {
+      "release-type": "simple",
+      "component": "mcchat-native",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "app/gradle.properties"
+        }
+      ]
+    }
+  }
+}
