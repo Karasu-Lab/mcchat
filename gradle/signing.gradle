@@ -3,9 +3,9 @@ import groovy.io.FileType
 subprojects {
 	def signArtifacts = tasks.register('signArtifacts') {
 		def buildDir = layout.buildDirectory.asFile
-		def privateKey = providers.environmentVariable('ANDROID_SIGNING_PRIVATE_KEY')
-		def passphrase = providers.environmentVariable('ANDROID_SIGNING_PASSPHRASE')
-		def keyId = providers.environmentVariable('ANDROID_SIGNING_KEY_ID')
+		def privateKey = providers.environmentVariable('SIGNING_PRIVATE_KEY')
+		def passphrase = providers.environmentVariable('SIGNING_PASSPHRASE')
+		def keyId = providers.environmentVariable('SIGNING_KEY_ID')
 		onlyIf { privateKey.present }
 		doLast {
 			def artifacts = []

@@ -67,23 +67,23 @@ jobs:
         if: env.RELEASED == 'true'
         working-directory: ${{ matrix.working-directory }}
         env:
-          ANDROID_SIGNING_PRIVATE_KEY: ${{ secrets.ANDROID_SIGNING_PRIVATE_KEY }}
-          ANDROID_SIGNING_PASSPHRASE: ${{ secrets.ANDROID_SIGNING_PASSPHRASE }}
-          ANDROID_SIGNING_KEY_ID: ${{ vars.ANDROID_SIGNING_KEY_ID }}
+          SIGNING_PRIVATE_KEY: ${{ secrets.SIGNING_PRIVATE_KEY }}
+          SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+          SIGNING_KEY_ID: ${{ vars.SIGNING_KEY_ID }}
         run: |
           chmod +x ./gradlew
           ./gradlew ${{ matrix.tasks }}
       - name: sign android artifacts
         if: env.RELEASED == 'true' && matrix.path == 'apps/MCChatNative'
         env:
-          ANDROID_SIGNING_PRIVATE_KEY: ${{ secrets.ANDROID_SIGNING_PRIVATE_KEY }}
-          ANDROID_SIGNING_PASSPHRASE: ${{ secrets.ANDROID_SIGNING_PASSPHRASE }}
-          ANDROID_SIGNING_KEY_ID: ${{ vars.ANDROID_SIGNING_KEY_ID }}
+          SIGNING_PRIVATE_KEY: ${{ secrets.SIGNING_PRIVATE_KEY }}
+          SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASSPHRASE }}
+          SIGNING_KEY_ID: ${{ vars.SIGNING_KEY_ID }}
         run: |
           set -euo pipefail
-          printf '%s' "$ANDROID_SIGNING_PRIVATE_KEY" | gpg --batch --import
+          printf '%s' "$SIGNING_PRIVATE_KEY" | gpg --batch --import
           for file in apps/MCChatNative/app/build/outputs/apk/*/*.apk apps/MCChatNative/app/build/outputs/bundle/*/*.aab; do
-            printf '%s' "$ANDROID_SIGNING_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --local-user "${ANDROID_SIGNING_KEY_ID}!" --sign --output "$file.gpg" "$file"
+            printf '%s' "$SIGNING_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --local-user "${SIGNING_KEY_ID}!" --sign --output "$file.gpg" "$file"
           done
       - name: upload files and publish release
         if: env.RELEASED == 'true'
