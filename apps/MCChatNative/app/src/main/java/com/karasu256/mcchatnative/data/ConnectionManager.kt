@@ -46,6 +46,7 @@ object ConnectionManager {
     private val online = MutableStateFlow<Set<String>>(emptySet())
     private val inWorld = MutableStateFlow<Set<String>>(emptySet())
     private val selves = MutableStateFlow<Map<String, User>>(emptyMap())
+    private val requestedSkins = ConcurrentHashMap.newKeySet<String>()
     private val ping = CapturedPacket(CapturedPacket.Type.PING, Origin.CLIENT, WorldData.empty("", ""), Optional.empty())
     private var store: ConnectionStore? = null
 
@@ -177,13 +178,21 @@ object ConnectionManager {
 
     private fun cacheSkins(packet: CapturedPacket) {
         val data = packet.data().orElse(null)
+        val worldEvent = data?.kind() == CapturedData.Kind.PLAYER_JOINED || data?.kind() == CapturedData.Kind.PLAYER_LEFT
         val players = packet.world().context().players() +
             data?.players().orEmpty() +
-            listOfNotNull(data?.player()?.orElse(null))
+            listOfNotNull(data?.player()?.orElse(null)?.takeIf { worldEvent })
         players.forEach { cacheSkin(it) }
     }
 
     private fun cacheSkin(player: PlayerRef) {
-        player.skin().ifPresent { SkinCache.put(player.uuid().toString(), it.png()) }
+        val id = player.uuid().toString()
+        val skin = player.skin().orElse(null)
+        if (skin != null) {
+            SkinCache.put(id, skin.png())
+        } else if (SkinCache.get(id) == null && requestedSkins.add(id)) {
+            scope.launch { MojangSkinFetcher.fetch(id)?.let { SkinCache.put(id, it) } }
+                .invokeOnCompletion { if (it != null) requestedSkins.remove(id) }
+        }
     }
 }
