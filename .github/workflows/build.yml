@@ -65,10 +65,8 @@ jobs:
         run: |
           ref="$BRANCH"
           if ! gh api "repos/${GITHUB_REPOSITORY}/branches/${BRANCH}" --silent 2>/dev/null; then
-            base="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state merged --json baseRefName --jq '.[0].baseRefName // empty')"
-            if [ -n "$base" ] && gh api "repos/${GITHUB_REPOSITORY}/branches/${base}" --silent 2>/dev/null; then
-              ref="$base"
-            fi
+            merged="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state merged --json mergeCommit --jq '.[0].mergeCommit.oid // empty')"
+            ref="${merged:-$ref}"
           fi
           echo "ref=${ref}" >> "$GITHUB_OUTPUT"
       - name: checkout repository
