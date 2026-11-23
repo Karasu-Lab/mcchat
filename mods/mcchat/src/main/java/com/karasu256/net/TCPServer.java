@@ -1,6 +1,7 @@
 package com.karasu256.net;
 
 import com.karasu256.ChatNative;
+import com.karasu256.Threads;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.PacketChannel;
 import java.io.BufferedReader;
@@ -39,7 +40,7 @@ public final class TCPServer implements PacketChannel {
     socket.setReuseAddress(true);
     socket.bind(new InetSocketAddress(port));
     serverSocket = socket;
-    Thread.ofVirtual().name("chatnative-tcp-accept-" + port).start(() -> acceptLoop(socket));
+    Threads.start("chatnative-tcp-accept-" + port, () -> acceptLoop(socket));
     ChatNative.LOGGER.info("TCP capture server listening on port {}", socket.getLocalPort());
   }
 
@@ -76,10 +77,7 @@ public final class TCPServer implements PacketChannel {
 
   public synchronized void connect(String host, int port, Consumer<Boolean> onState) {
     disconnectUpstream();
-    Thread thread =
-        Thread.ofVirtual()
-            .name("chatnative-tcp-upstream")
-            .unstarted(() -> upstreamLoop(host, port, onState));
+    Thread thread = Threads.daemon("chatnative-tcp-upstream", () -> upstreamLoop(host, port, onState));
     upstreamThread = thread;
     thread.start();
   }
@@ -164,11 +162,11 @@ public final class TCPServer implements PacketChannel {
 
     void start() {
       startWriter();
-      Thread.ofVirtual().name("chatnative-tcp-read").start(this::readLoop);
+      Threads.start("chatnative-tcp-read", this::readLoop);
     }
 
     void startWriter() {
-      Thread.ofVirtual().name("chatnative-tcp-write").start(this::writeLoop);
+      Threads.start("chatnative-tcp-write", this::writeLoop);
     }
 
     void enqueue(String line) {

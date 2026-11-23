@@ -1,6 +1,7 @@
 package com.karasu256.capture;
 
 import com.karasu256.ChatNative;
+import com.karasu256.Threads;
 import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
@@ -25,7 +26,7 @@ public final class CapturePipeline implements AutoCloseable {
   private volatile boolean running = true;
 
   public CapturePipeline() {
-    this.worker = Thread.ofVirtual().name("chatnative-pipeline").unstarted(this::run);
+    this.worker = Threads.daemon("chatnative-pipeline", this::run);
     this.worker.start();
   }
 

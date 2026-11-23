@@ -8,6 +8,6 @@ public final class PlayerRefs {
   private PlayerRefs() {}
 
   public static PlayerRef of(GameProfile profile) {
-    return new PlayerRef(profile.id(), profile.name(), Optional.empty());
+    return new PlayerRef(profile.getId(), profile.getName(), Optional.empty());
   }
 }

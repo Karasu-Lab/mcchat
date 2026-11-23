@@ -1,26 +1,25 @@
 package com.karasu256.net;
 
 import com.karasu256.ChatNative;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
+import net.fabricmc.fabric.api.networking.v1.FabricPacket;
+import net.fabricmc.fabric.api.networking.v1.PacketType;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 
-public record CaptureEndpointPayload(String host, int port) implements CustomPacketPayload {
-  public static final Type<CaptureEndpointPayload> TYPE =
-      new Type<>(Identifier.fromNamespaceAndPath(ChatNative.MOD_ID, "capture_endpoint"));
-
-  public static final StreamCodec<RegistryFriendlyByteBuf, CaptureEndpointPayload> CODEC =
-      StreamCodec.composite(
-          ByteBufCodecs.STRING_UTF8,
-          CaptureEndpointPayload::host,
-          ByteBufCodecs.VAR_INT,
-          CaptureEndpointPayload::port,
-          CaptureEndpointPayload::new);
+public record CaptureEndpointPayload(String host, int port) implements FabricPacket {
+  public static final PacketType<CaptureEndpointPayload> TYPE =
+      PacketType.create(
+          new ResourceLocation(ChatNative.MOD_ID, "capture_endpoint"),
+          buf -> new CaptureEndpointPayload(buf.readUtf(), buf.readVarInt()));
 
   @Override
-  public Type<? extends CustomPacketPayload> type() {
+  public void write(FriendlyByteBuf buf) {
+    buf.writeUtf(host);
+    buf.writeVarInt(port);
+  }
+
+  @Override
+  public PacketType<?> getType() {
     return TYPE;
   }
 }

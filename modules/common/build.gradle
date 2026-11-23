@@ -2,6 +2,8 @@ plugins {
 	id 'java-library'
 }
 
+version = '1.0.0'
+
 dependencies {
 	api 'com.google.code.gson:gson:2.13.1'
 }

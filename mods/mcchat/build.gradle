@@ -1,5 +1,5 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -17,20 +17,12 @@ loom {
 	}
 }
 
-fabricApi {
-	configureTests {
-		createSourceSet = true
-		modId = "chatnative-test"
-		enableGameTests = false
-		eula = true
-	}
-}
-
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
 	implementation project(':modules:common')
 	include project(':modules:common')

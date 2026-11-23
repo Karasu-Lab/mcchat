@@ -56,7 +56,8 @@ public class ChatNativeClient implements ClientModInitializer {
 
     ClientPlayNetworking.registerGlobalReceiver(
         CaptureEndpointPayload.TYPE,
-        (payload, context) -> connectUpstream(pipeline, payload, context.client()));
+        (payload, player, sender) ->
+            connectUpstream(pipeline, payload, Minecraft.getInstance()));
 
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
       if (tcp != null) {

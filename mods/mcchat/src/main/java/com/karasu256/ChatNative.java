@@ -12,7 +12,6 @@ import com.karasu256.net.TCPSink;
 import java.io.IOException;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
@@ -45,9 +44,6 @@ public class ChatNative implements ModInitializer {
     config = ChatNativeConfig.load();
     pipeline = new CapturePipeline();
     ServerCapture.register();
-
-    PayloadTypeRegistry.clientboundPlay()
-        .register(CaptureEndpointPayload.TYPE, CaptureEndpointPayload.CODEC);
 
     ServerLifecycleEvents.SERVER_STARTED.register(server -> {
       if (server.isDedicatedServer()) {

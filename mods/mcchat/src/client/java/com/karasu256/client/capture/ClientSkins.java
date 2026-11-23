@@ -15,9 +15,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.DefaultPlayerSkin;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.resources.PlayerSkin;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
-import net.minecraft.world.entity.player.PlayerSkin;
 
 public final class ClientSkins {
   private static final Set<UUID> requested = ConcurrentHashMap.newKeySet();
@@ -25,16 +25,16 @@ public final class ClientSkins {
   private ClientSkins() {}
 
   public static void request(GameProfile profile) {
-    if (!requested.add(profile.id())) {
+    if (!requested.add(profile.getId())) {
       return;
     }
     Minecraft client = Minecraft.getInstance();
     client
         .getSkinManager()
-        .get(profile)
+        .getOrLoad(profile)
         .handleAsync(
             (skin, error) -> {
-              store(client, profile.id(), skin == null ? Optional.<PlayerSkin>empty() : skin, profile);
+              store(client, profile.getId(), Optional.ofNullable(skin), profile);
               return null;
             },
             client);
@@ -43,7 +43,7 @@ public final class ClientSkins {
   private static void store(
       Minecraft client, UUID id, Optional<PlayerSkin> resolved, GameProfile profile) {
     PlayerSkin skin = resolved.orElseGet(() -> DefaultPlayerSkin.get(profile));
-    Identifier path = skin.body().texturePath();
+    ResourceLocation path = skin.texture();
     try {
       byte[] png = readPng(client, path);
       if (png == null) {
@@ -59,7 +59,7 @@ public final class ClientSkins {
     ChatNative.pipeline().republishPlayers();
   }
 
-  private static byte[] readPng(Minecraft client, Identifier path) throws IOException {
+  private static byte[] readPng(Minecraft client, ResourceLocation path) throws IOException {
     AbstractTexture texture = client.getTextureManager().getTexture(path);
     if (texture instanceof DynamicTexture dynamic && dynamic.getPixels() != null) {
       Path file = Files.createTempFile("chatnative-skin", ".png");

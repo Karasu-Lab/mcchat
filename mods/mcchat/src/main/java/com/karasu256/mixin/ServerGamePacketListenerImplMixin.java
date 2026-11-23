@@ -2,7 +2,6 @@ package com.karasu256.mixin;
 
 import com.karasu256.capture.ServerCapture;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
-import net.minecraft.network.protocol.game.ServerboundChatCommandSignedPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,12 +16,6 @@ public abstract class ServerGamePacketListenerImplMixin {
 
   @Inject(method = "handleChatCommand", at = @At("HEAD"))
   private void chatnative$onCommand(ServerboundChatCommandPacket packet, CallbackInfo ci) {
-    ServerCapture.commandExecuted(player, packet.command());
-  }
-
-  @Inject(method = "handleSignedChatCommand", at = @At("HEAD"))
-  private void chatnative$onSignedCommand(
-      ServerboundChatCommandSignedPacket packet, CallbackInfo ci) {
     ServerCapture.commandExecuted(player, packet.command());
   }
 }
