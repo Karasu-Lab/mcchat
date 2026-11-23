@@ -1,16 +1,23 @@
 package com.karasu256.client.mixin;
 
+import com.karasu256.client.ChatNativeClient;
 import com.karasu256.client.chat.ClientChatTextProcessor;
 import java.util.List;
 import net.minecraft.client.GuiMessage;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.GuiMessageTag;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.network.chat.Style;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChatComponent.class)
 public abstract class ChatComponentMixin {
@@ -23,6 +30,38 @@ public abstract class ChatComponentMixin {
       argsOnly = true)
   private GuiMessageTag chatnative$markMention(GuiMessageTag tag) {
     return ClientChatTextProcessor.markMention(tag);
+  }
+
+  @Inject(method = "render", at = @At("HEAD"), cancellable = true)
+  private void chatnative$hideVanillaList(
+      GuiGraphics graphics, int tickCount, int mouseX, int mouseY, CallbackInfo ci) {
+    if (ChatNativeClient.chatUi().isActive()) {
+      ci.cancel();
+      if (Minecraft.getInstance().screen == null) {
+        ChatNativeClient.chatUi().renderHud(graphics, tickCount);
+      }
+    }
+  }
+
+  @Inject(method = "getMessageTagAt", at = @At("HEAD"), cancellable = true)
+  private void chatnative$noTag(double x, double y, CallbackInfoReturnable<GuiMessageTag> cir) {
+    if (ChatNativeClient.chatUi().isActive()) {
+      cir.setReturnValue(null);
+    }
+  }
+
+  @Inject(method = "getClickedComponentStyleAt", at = @At("HEAD"), cancellable = true)
+  private void chatnative$noStyle(double x, double y, CallbackInfoReturnable<Style> cir) {
+    if (ChatNativeClient.chatUi().isActive()) {
+      cir.setReturnValue(null);
+    }
+  }
+
+  @Inject(method = "handleChatQueueClicked", at = @At("HEAD"), cancellable = true)
+  private void chatnative$noQueueClick(double x, double y, CallbackInfoReturnable<Boolean> cir) {
+    if (ChatNativeClient.chatUi().isActive()) {
+      cir.setReturnValue(false);
+    }
   }
 
   @Redirect(

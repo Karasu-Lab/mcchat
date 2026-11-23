@@ -1,14 +1,21 @@
 package com.karasu256.client.chat;
 
+import com.karasu256.client.mixin.EditBoxAccessor;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.component.ChatText;
+import com.karasu256.mcchat.common.component.ChatTextComponent;
 import com.karasu256.mcchat.common.component.MentionData;
+import com.karasu256.mcchat.common.component.RawText;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.network.chat.Style;
+import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.glfw.GLFW;
 
 public final class MentionSuggestions {
@@ -19,6 +26,27 @@ public final class MentionSuggestions {
 
   public MentionSuggestions(EditBox input) {
     this.input = input;
+    BiFunction<String, Integer, FormattedCharSequence> vanilla =
+        ((EditBoxAccessor) input).chatnative$formatter();
+    input.setFormatter((text, offset) -> styled(vanilla.apply(text, offset), offset));
+  }
+
+  private FormattedCharSequence styled(FormattedCharSequence base, int offset) {
+    List<Style> styles = new ArrayList<>();
+    ChatTextRenderer.render(ChatText.parse(input.getValue(), ClientChatTextProcessor.onlinePlayers()))
+        .visit(
+            (style, content) -> {
+              content.chars().forEach(character -> styles.add(style));
+              return Optional.empty();
+            },
+            Style.EMPTY);
+    return sink ->
+        base.accept(
+            (index, style, codePoint) -> {
+              int absolute = offset + index;
+              Style rendered = absolute < styles.size() ? styles.get(absolute) : Style.EMPTY;
+              return sink.accept(index, rendered.applyTo(style), codePoint);
+            });
   }
 
   public void update() {
@@ -75,6 +103,27 @@ public final class MentionSuggestions {
       int color = i == selected ? 0xFFFFFF55 : 0xFFAAAAAA;
       graphics.drawString(font, candidates.get(i).name(), left + 4, top + i * 12 + 2, color);
     }
+  }
+
+  public void insertMention(PlayerRef player) {
+    ChatText text = ChatText.parse(input.getValue(), ClientChatTextProcessor.onlinePlayers());
+    int cursor = input.getCursorPosition();
+    int offset = 0;
+    for (ChatTextComponent component : text.components()) {
+      int length = component.plain().length();
+      if (!(component instanceof RawText) && cursor > offset && cursor < offset + length) {
+        cursor = offset + length;
+      }
+      offset += length;
+    }
+    MentionData mention = new MentionData(player.uuid(), player.name());
+    int next = cursor + mention.plain().length();
+    applying = true;
+    input.setValue(text.replace(cursor, cursor, List.of(mention)).plain());
+    input.setCursorPosition(next);
+    input.setHighlightPos(next);
+    applying = false;
+    completion = Optional.empty();
   }
 
   private void insert(PlayerRef player) {

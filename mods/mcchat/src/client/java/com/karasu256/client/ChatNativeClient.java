@@ -8,28 +8,52 @@ import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.client.capture.ClientCapture;
 import com.karasu256.client.capture.RemoteWorldSource;
 import com.karasu256.client.chat.ClientChatTextProcessor;
+import com.karasu256.client.ui.ChatLog;
+import com.karasu256.client.ui.ChatTheme;
+import com.karasu256.client.ui.ChatUi;
+import com.karasu256.client.ui.ReplyIcon;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.WorldData;
+import com.karasu256.mcchat.common.WorldSource;
 import com.karasu256.mcchat.common.event.CapturedEvent;
 import com.karasu256.mcchat.common.event.CommandExecutedEvent;
 import com.karasu256.mcchat.common.event.PlayerListEvent;
 import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.ReceivedChatTextPayload;
 import com.karasu256.net.TCPServer;
+import com.karasu256.net.TypingBroadcastPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.server.packs.PackType;
 import net.minecraft.client.server.IntegratedServer;
 
 public class ChatNativeClient implements ClientModInitializer {
+  private static ChatUi chatUi;
+
   private ClientTcpController tcp;
+
+  public static ChatUi chatUi() {
+    return chatUi;
+  }
 
   @Override
   public void onInitializeClient() {
     CapturePipeline pipeline = ChatNative.pipeline();
+    ChatTheme theme = ChatTheme.dark();
+    ReplyIcon replyIcon = new ReplyIcon(theme.metrics.iconTextureSize);
+    ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(replyIcon);
+    chatUi = new ChatUi(theme, replyIcon);
+    registerChatUi();
+    ClientChatTextProcessor.register();
     ClientCapture.register();
     pipeline.setOnline(false, ClientCapture.sessionPlayer());
 
@@ -43,9 +67,12 @@ public class ChatNativeClient implements ClientModInitializer {
       resetWorld(pipeline, client);
       pipeline.setOnline(true, ClientCapture.sessionPlayer());
       ClientCapture.submitPlayerList(client);
+      WorldData world = worldSource(client).world();
+      ChatLog.INSTANCE.worldJoined(world.id(), world.worldName());
     });
 
     ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+      ChatLog.INSTANCE.clearTyping();
       pipeline.clearIcon();
       pipeline.setOnline(false, ClientCapture.sessionPlayer());
     });
@@ -58,22 +85,54 @@ public class ChatNativeClient implements ClientModInitializer {
         ReceivedChatTextPayload.TYPE,
         (payload, player, sender) -> ClientChatTextProcessor.structured(payload));
 
+    ClientPlayNetworking.registerGlobalReceiver(
+        TypingBroadcastPayload.TYPE,
+        (payload, player, sender) ->
+            ChatLog.INSTANCE.typing(payload.player(), payload.started()));
+
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
       tcp.stop();
       pipeline.close();
     });
   }
 
+  private void registerChatUi() {
+    ClientChatTextProcessor.listen(chat ->
+        ChatLog.INSTANCE.received(
+            chat, ClientCapture.sessionPlayer().uuid(), Minecraft.getInstance().gui.getGuiTicks()));
+
+    ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+      if (screen instanceof ChatScreen) {
+        ScreenEvents.beforeRender(screen).register((current, graphics, mouseX, mouseY, delta) -> {
+          if (chatUi.isActive()) {
+            chatUi.render(current, graphics);
+          }
+        });
+        ScreenEvents.afterRender(screen).register((current, graphics, mouseX, mouseY, delta) ->
+            chatUi.renderHover(current, graphics, mouseX, mouseY));
+        ScreenMouseEvents.allowMouseClick(screen).register((current, mouseX, mouseY, button) ->
+            !chatUi.mouseClicked(current, mouseX, mouseY, button));
+        ScreenMouseEvents.allowMouseScroll(screen).register((current, mouseX, mouseY, horizontal, vertical) ->
+            !chatUi.mouseScrolled(current, mouseX, mouseY, vertical));
+      }
+    });
+  }
+
+  private static WorldSource worldSource(Minecraft client) {
+    IntegratedServer local = client.getSingleplayerServer();
+    return local != null
+        ? new ServerWorldSource(local)
+        : new RemoteWorldSource(client.getCurrentServer());
+  }
+
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
+    pipeline.reset(worldSource(client));
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
-      pipeline.reset(new ServerWorldSource(local));
       local.execute(() ->
           new PlayerListEvent(pipeline, Origin.SERVER, ServerCapture.onlinePlayers(local))
               .handle());
-      return;
     }
-    pipeline.reset(new RemoteWorldSource(client.getCurrentServer()));
   }
 
   private void connectUpstream(

@@ -20,7 +20,6 @@ import com.karasu256.mcchat.common.event.TypingStoppedEvent;
 import com.mojang.authlib.GameProfile;
 import java.util.Optional;
 import java.util.function.Consumer;
-import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
@@ -34,26 +33,9 @@ public final class ClientCapture {
   private ClientCapture() {}
 
   public static void register() {
-    ClientReceiveMessageEvents.CHAT.register((message, signed, sender, params, receptionTime) ->
-        new ChatReceivedEvent(
-                ChatNative.pipeline(),
-                Origin.CLIENT,
-                sender == null ? null : PlayerRefs.of(sender),
-                ClientChatTextProcessor.received(
-                    sender == null ? null : sender.getId(),
-                    signed != null ? signed.signedContent() : message.getString()))
+    ClientChatTextProcessor.listen(chat ->
+        new ChatReceivedEvent(ChatNative.pipeline(), Origin.CLIENT, chat.sender(), chat.text())
             .handle());
-
-    ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-      if (!overlay) {
-        new ChatReceivedEvent(
-                ChatNative.pipeline(),
-                Origin.CLIENT,
-                null,
-                ClientChatTextProcessor.received(null, message.getString()))
-            .handle();
-      }
-    });
 
     ClientSendMessageEvents.CHAT.register(message ->
         new ChatSentEvent(

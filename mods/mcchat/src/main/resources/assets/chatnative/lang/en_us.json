@@ -2,5 +2,9 @@
 	"config.chatnative.title": "ChatNative",
 	"config.chatnative.client": "Client",
 	"config.chatnative.server": "Server",
-	"config.chatnative.tcp_enabled": "Enable the TCP server"
+	"config.chatnative.tcp_enabled": "Enable the TCP server",
+	"config.chatnative.use_vanilla_chat": "Use the vanilla chat",
+	"config.chatnative.show_own_typing": "Show your own typing indicator",
+	"config.chatnative.show_own_name": "Always show your own name",
+	"chatnative.chat.system": "System"
 }

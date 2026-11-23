@@ -21,12 +21,14 @@ public final class ServerCapture {
   public static void register() {
     ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
       MinecraftServer server = sender.level().getServer();
-      new ChatReceivedEvent(
+      ChatReceivedEvent event =
+          new ChatReceivedEvent(
               ChatNative.pipelineFor(server),
               Origin.SERVER,
               PlayerRefs.of(sender.getGameProfile()),
-              ServerChatTextProcessor.received(sender, message.signedContent(), server))
-          .handle();
+              ServerChatTextProcessor.received(sender, message.signedContent(), server));
+      ServerChatTextProcessor.announce(sender, event, server);
+      event.handle();
     });
 
     ServerMessageEvents.COMMAND_MESSAGE.register((message, source, params) -> {
