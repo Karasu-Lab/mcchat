@@ -29,7 +29,13 @@ final class SvgTextures {
   }
 
   static void draw(
-      GuiGraphics graphics, ResourceLocation texture, int textureSize, int x, int y, int size, int argb) {
+      GuiGraphics graphics,
+      ResourceLocation texture,
+      int textureSize,
+      int x,
+      int y,
+      int size,
+      int argb) {
     float outer = RenderSystem.getShaderColor()[3];
     RenderSystem.enableBlend();
     RenderSystem.setShaderColor(
