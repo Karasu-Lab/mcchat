@@ -106,7 +106,7 @@ public class ChatNativeClient implements ClientModInitializer {
                 chatUi.render(current, graphics);
               }
             });
-        ScreenEvents.afterExtract(screen)
+        ScreenEvents.afterForeground(screen)
             .register((current, graphics, mouseX, mouseY, delta) ->
                 chatUi.renderHover(current, graphics, mouseX, mouseY));
         ScreenMouseEvents.allowMouseClick(screen)
