@@ -11,8 +11,7 @@ import com.karasu256.client.chat.ClientChatTextProcessor;
 import com.karasu256.client.ui.ChatLog;
 import com.karasu256.client.ui.ChatTheme;
 import com.karasu256.client.ui.ChatUi;
-import com.karasu256.client.ui.ReplyIcon;
-import com.karasu256.client.ui.TypingIcon;
+import com.karasu256.client.ui.Shapes;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.WorldData;
@@ -30,12 +29,10 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.server.IntegratedServer;
-import net.minecraft.server.packs.PackType;
 
 public class ChatNativeClient implements ClientModInitializer {
   private static ChatUi chatUi;
@@ -50,11 +47,8 @@ public class ChatNativeClient implements ClientModInitializer {
   public void onInitializeClient() {
     CapturePipeline pipeline = ChatNative.pipeline();
     ChatTheme theme = ChatTheme.dark();
-    ReplyIcon replyIcon = new ReplyIcon(theme.metrics.iconTextureSize);
-    TypingIcon typingIcon = new TypingIcon(theme.metrics.iconTextureSize);
-    ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(replyIcon);
-    ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(typingIcon);
-    chatUi = new ChatUi(theme, replyIcon, typingIcon);
+    Shapes.register();
+    chatUi = new ChatUi(theme);
     registerChatUi();
     ClientChatTextProcessor.register();
     ClientCapture.register();

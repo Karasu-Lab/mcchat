@@ -4,7 +4,6 @@ import com.karasu256.client.ui.ChatLayout.DividerRow;
 import com.karasu256.client.ui.ChatLayout.MessageRow;
 import com.karasu256.client.ui.ChatLayout.TypingRow;
 import com.karasu256.mcchat.common.component.MentionData;
-import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
@@ -19,17 +18,13 @@ import net.minecraft.util.FormattedCharSequence;
 final class ChatRenderer {
   private final ChatTheme theme;
   private final ChatLayout layout;
-  private final ReplyIcon replyIcon;
-  private final TypingIcon typingIcon;
   private final FadeAnimation mentionFade;
   private final FadeAnimation replyFade;
   private ChatLog.Message shownReply;
 
-  ChatRenderer(ChatTheme theme, ChatLayout layout, ReplyIcon replyIcon, TypingIcon typingIcon) {
+  ChatRenderer(ChatTheme theme, ChatLayout layout) {
     this.theme = theme;
     this.layout = layout;
-    this.replyIcon = replyIcon;
-    this.typingIcon = typingIcon;
     this.mentionFade = new FadeAnimation(theme.metrics.fadeMillis, 1f);
     this.replyFade = new FadeAnimation(theme.metrics.fadeMillis, 0f);
   }
@@ -61,11 +56,13 @@ final class ChatRenderer {
   private void replyRow(
       GuiGraphics g, Font font, ChatLog log, ChatLog.Message target, int width, int top) {
     ChatTheme.Metrics m = theme.metrics;
-    g.fill(
+    fillRound(
+        g,
         m.vanillaInputSide,
         top,
         width - m.vanillaInputSide,
         top + m.replyRowHeight,
+        m.replyRowHeight / 2,
         Minecraft.getInstance().options.getBackgroundColor(Integer.MIN_VALUE));
     int buttonTop = top;
     int avatarX = m.vanillaChatLeft;
@@ -181,7 +178,7 @@ final class ChatRenderer {
         font.lineHeight);
     int textX = avatarX + font.lineHeight + m.quoteGap;
     g.drawString(font, row.quote(), textX, top + m.quotePadV, theme.colors.onSurfaceVariant, false);
-    replyIcon.draw(
+    Shapes.replyIcon(
         g,
         textX + font.width(row.quote()) + m.quoteGap,
         top + m.quotePadV,
@@ -255,7 +252,7 @@ final class ChatRenderer {
       int color = ((int) (alpha * 255) << 24) | (theme.colors.onSurfaceVariant & 0xFFFFFF);
       int dotX = bubbleX + m.typingPad + i * (m.dot + m.dotGap);
       int dotY = bubbleY + m.typingPad;
-      typingIcon.draw(g, dotX, dotY, m.dot, color);
+      fillRound(g, dotX, dotY, dotX + m.dot, dotY + m.dot, m.dot / 2, color);
     }
   }
 
@@ -302,44 +299,19 @@ final class ChatRenderer {
   }
 
   private void face(GuiGraphics g, ResourceLocation texture, int x, int y, int size) {
-    float radius = size / 2f;
     ChatTheme.Metrics m = theme.metrics;
-    float texelsPerUnit = (float) m.faceTexels / size;
-    RenderSystem.enableBlend();
-    for (int row = 0; row < size; row++) {
-      float dy = row + 0.5f - radius;
-      float half = (float) Math.sqrt(Math.max(0f, radius * radius - dy * dy));
-      int left = Math.round(radius - half);
-      int right = Math.round(radius + half);
-      if (right <= left) {
-        continue;
-      }
-      int uWidth = Math.max(1, Math.round((right - left) * texelsPerUnit));
-      for (int layerU : new int[] {m.faceU, m.hatU}) {
-        g.blit(
-            texture,
-            x + left,
-            y + row,
-            right - left,
-            1,
-            layerU + left * texelsPerUnit,
-            m.faceV + (int) (row * texelsPerUnit),
-            uWidth,
-            1,
-            m.skinSize,
-            m.skinSize);
-      }
-    }
+    float skin = m.skinSize;
+    Shapes.face(
+        g,
+        texture,
+        x,
+        y,
+        size,
+        new float[] {m.faceU / skin, m.hatU / skin, m.faceV / skin, m.faceTexels / skin});
   }
 
-  static void fillRound(GuiGraphics g, int x0, int y0, int x1, int y1, int radius, int color) {
-    int r = Math.max(0, Math.min(radius, Math.min((x1 - x0) / 2, (y1 - y0) / 2)));
-    for (int i = 0; i < r; i++) {
-      float dy = r - i - 0.5f;
-      int inset = Math.round(r - (float) Math.sqrt(r * r - dy * dy));
-      g.fill(x0 + inset, y0 + i, x1 - inset, y0 + i + 1, color);
-      g.fill(x0 + inset, y1 - i - 1, x1 - inset, y1 - i, color);
-    }
-    g.fill(x0, y0 + r, x1, y1 - r, color);
+  private static void fillRound(
+      GuiGraphics g, int x0, int y0, int x1, int y1, int radius, int color) {
+    Shapes.roundRect(g, x0, y0, x1, y1, radius, color);
   }
 }

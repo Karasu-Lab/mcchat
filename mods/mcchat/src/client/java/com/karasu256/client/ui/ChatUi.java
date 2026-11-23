@@ -36,10 +36,10 @@ public final class ChatUi {
   private boolean cachedOwnName;
   private int scroll;
 
-  public ChatUi(ChatTheme theme, ReplyIcon replyIcon, TypingIcon typingIcon) {
+  public ChatUi(ChatTheme theme) {
     this.theme = theme;
     this.layout = new ChatLayout(theme);
-    this.renderer = new ChatRenderer(theme, layout, replyIcon, typingIcon);
+    this.renderer = new ChatRenderer(theme, layout);
   }
 
   public boolean isActive() {
