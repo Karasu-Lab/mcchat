@@ -4,9 +4,10 @@ import com.karasu256.capture.CapturePipeline;
 import com.karasu256.capture.ServerCapture;
 import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.config.ChatNativeConfig;
-import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.event.EventRegistry;
+import com.karasu256.mcchat.common.event.TypingEvent;
 import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.TCPServer;
 import com.karasu256.net.TCPSink;
@@ -107,11 +108,13 @@ public class ChatNative implements ModInitializer {
                 target.requestStatus();
               } else if (packet.type() == CapturedPacket.Type.EVENT) {
                 packet
-                    .data()
-                    .filter(ChatNative::isTyping)
-                    .ifPresent(data -> relayTyping(target, data));
+                    .event()
+                    .filter(TypingEvent.class::isInstance)
+                    .map(TypingEvent.class::cast)
+                    .ifPresent(typing -> target.submit(typing.relayedAs(target, Origin.SERVER)));
               }
-            });
+            },
+            EventRegistry.common());
     try {
       tcp.start(config.serverPort);
     } catch (IOException e) {
@@ -133,23 +136,6 @@ public class ChatNative implements ModInitializer {
       integratedServer.close();
       integratedServer = null;
     }
-  }
-
-  private static boolean isTyping(CapturedData data) {
-    return data.kind() == CapturedData.Kind.TYPING_STARTED
-        || data.kind() == CapturedData.Kind.TYPING_STOPPED;
-  }
-
-  private static void relayTyping(CapturePipeline pipeline, CapturedData data) {
-    pipeline.submit(
-        new CapturedData(
-            data.id(),
-            data.timestampMillis(),
-            Origin.SERVER,
-            data.kind(),
-            data.player(),
-            data.content(),
-            data.players()));
   }
 
   private static void stopDedicatedCapture() {

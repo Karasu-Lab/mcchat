@@ -33,7 +33,7 @@ public final class PlayerRef {
     return new PlayerRef(uuid, name, Optional.empty());
   }
 
-  boolean valid() {
+  public boolean valid() {
     return uuid != null && name != null && (skin == null || skin.png != null);
   }
 

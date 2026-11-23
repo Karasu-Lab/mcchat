@@ -1,12 +1,15 @@
 package com.karasu256.mcchatnative.data
 
 import android.content.Context
-import com.karasu256.mcchat.common.CapturedData
 import com.karasu256.mcchat.common.CapturedPacket
 import com.karasu256.mcchat.common.MinecraftChatScreen
+import com.karasu256.mcchat.common.MinecraftScreen
 import com.karasu256.mcchat.common.Origin
 import com.karasu256.mcchat.common.PlayerRef
 import com.karasu256.mcchat.common.WorldData
+import com.karasu256.mcchat.common.WorldIcon
+import com.karasu256.mcchatnative.data.event.AppEventContext
+import com.karasu256.mcchatnative.data.event.AppEvents
 import com.karasu256.mcchatnative.model.Client
 import com.karasu256.mcchatnative.model.ConnectionInfo
 import com.karasu256.mcchatnative.model.User
@@ -181,53 +184,39 @@ object ConnectionManager {
     }
 
     private fun receive(clientId: String, line: String) {
-        val packet = CapturedPacket.decode(line).orElse(null) ?: return
+        val packet = CapturedPacket.decode(line, AppEvents.registry).orElse(null) ?: return
+        packet.bind(AppEventContext(clientId))
         if (packet.world().id().isNotEmpty()) {
             WorldRegistry.register(World(packet.world().id(), packet.world().worldName()))
         }
-        if (packet.type() == CapturedPacket.Type.STATUS) {
-            val data = packet.data().orElse(null)
-            inWorld.update { if (data?.kind() == CapturedData.Kind.ONLINE) it + clientId else it - clientId }
-            val screen = data?.screen()?.orElse(null)
-            inChatScreen.update { if (screen is MinecraftChatScreen) it + clientId else it - clientId }
-            data?.player()?.orElse(null)?.let { player ->
-                val user = User(UserId(player.uuid().toString()), player.name())
-                if (selves.value[clientId] != user) {
-                    selves.update { it + (clientId to user) }
-                    scope.launch { store?.setUser(clientId, user.id.value, user.name) }
-                }
-            }
-            return
+        packet.event().ifPresent { it.handle() }
+        if (packet.type() == CapturedPacket.Type.STATUS) return
+        if (packet.type() == CapturedPacket.Type.RESET || packet.type() == CapturedPacket.Type.SNAPSHOT) {
+            updateIcon(clientId, packet.world().context().icon().orElse(null))
         }
-        updateIcon(clientId, packet)
         cacheSkins(packet)
         stream(clientId).tryEmit(packet)
     }
 
-    private fun updateIcon(clientId: String, packet: CapturedPacket) {
-        when (packet.type()) {
-            CapturedPacket.Type.RESET, CapturedPacket.Type.SNAPSHOT -> {
-                val icon = packet.world().context().icon().orElse(null)
-                icons.update { if (icon != null) it + (clientId to icon.png()) else it - clientId }
+    internal fun updateStatus(clientId: String, online: Boolean, screen: MinecraftScreen?, player: PlayerRef?) {
+        inWorld.update { if (online) it + clientId else it - clientId }
+        inChatScreen.update { if (screen is MinecraftChatScreen) it + clientId else it - clientId }
+        player?.let {
+            val user = User(UserId(it.uuid().toString()), it.name())
+            if (selves.value[clientId] != user) {
+                selves.update { current -> current + (clientId to user) }
+                scope.launch { store?.setUser(clientId, user.id.value, user.name) }
             }
-            CapturedPacket.Type.EVENT -> packet.data().orElse(null)
-                ?.takeIf { it.kind() == CapturedData.Kind.WORLD_ICON }
-                ?.let { data ->
-                    val icon = data.icon().orElse(null)
-                    icons.update { if (icon != null) it + (clientId to icon.png()) else it - clientId }
-                }
-
-            else -> {}
         }
     }
 
+    internal fun updateIcon(clientId: String, icon: WorldIcon?) {
+        icons.update { if (icon != null) it + (clientId to icon.png()) else it - clientId }
+    }
+
     private fun cacheSkins(packet: CapturedPacket) {
-        val data = packet.data().orElse(null)
-        val worldEvent =
-            data?.kind() == CapturedData.Kind.PLAYER_JOINED || data?.kind() == CapturedData.Kind.PLAYER_LEFT
         val players = packet.world().context().players() +
-                data?.players().orEmpty() +
-                listOfNotNull(data?.player()?.orElse(null)?.takeIf { worldEvent })
+                packet.event().map { it.referencedPlayers() }.orElse(emptyList())
         players.forEach { cacheSkin(it) }
     }
 

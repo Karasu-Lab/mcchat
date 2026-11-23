@@ -1,5 +1,7 @@
 package com.karasu256.mcchat.common;
 
+import com.karasu256.mcchat.common.event.CapturedEvent;
+import com.karasu256.mcchat.common.event.EventContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,14 +14,14 @@ public final class WorldContext {
       new WorldContext(Collections.emptyList(), Collections.emptyList());
 
   private final List<PlayerRef> players;
-  private final List<CapturedData> history;
+  private final List<CapturedEvent> history;
   private final WorldIcon icon;
 
-  public WorldContext(List<PlayerRef> players, List<CapturedData> history) {
+  public WorldContext(List<PlayerRef> players, List<CapturedEvent> history) {
     this(players, history, null);
   }
 
-  public WorldContext(List<PlayerRef> players, List<CapturedData> history, WorldIcon icon) {
+  public WorldContext(List<PlayerRef> players, List<CapturedEvent> history, WorldIcon icon) {
     this.players = players.isEmpty() ? null : players;
     this.history = history.isEmpty() ? null : history;
     this.icon = icon;
@@ -29,7 +31,7 @@ public final class WorldContext {
     return players == null ? Collections.emptyList() : players;
   }
 
-  public List<CapturedData> history() {
+  public List<CapturedEvent> history() {
     return history == null ? Collections.emptyList() : history;
   }
 
@@ -41,62 +43,38 @@ public final class WorldContext {
     return new WorldContext(players(), history(), next);
   }
 
-  public WorldContext without(CapturedData.Kind kind) {
+  public WorldContext withPlayers(List<PlayerRef> next) {
+    return new WorldContext(next, history(), icon);
+  }
+
+  public WorldContext without(Class<? extends CapturedEvent> type) {
     return new WorldContext(
         players(),
         Collections.unmodifiableList(
-            history().stream().filter(d -> d.kind() != kind).collect(Collectors.toList())),
+            history().stream().filter(e -> !type.isInstance(e)).collect(Collectors.toList())),
         icon);
   }
 
-  public WorldContext apply(CapturedData data, int historySize) {
-    switch (data.kind()) {
-      case PLAYER_LIST:
-        return new WorldContext(data.players(), history(), icon);
-      case PLAYER_JOINED:
-        {
-          if (!data.player().isPresent()) {
-            return this;
-          }
-          PlayerRef joined = data.player().get();
-          List<PlayerRef> next = new ArrayList<>(players());
-          next.removeIf(p -> p.uuid().equals(joined.uuid()));
-          next.add(joined);
-          return new WorldContext(Collections.unmodifiableList(next), history(), icon);
-        }
-      case PLAYER_LEFT:
-        {
-          if (!data.player().isPresent()) {
-            return this;
-          }
-          PlayerRef left = data.player().get();
-          List<PlayerRef> next = new ArrayList<>(players());
-          next.removeIf(p -> p.uuid().equals(left.uuid()));
-          return new WorldContext(Collections.unmodifiableList(next), history(), icon);
-        }
-      case WORLD_ICON:
-        return withIcon(data.icon().orElse(null));
-      case ONLINE:
-      case OFFLINE:
-      case TYPING_STARTED:
-      case TYPING_STOPPED:
-      case WORLD_CHANGED:
-        return this;
-      default:
-        {
-          List<CapturedData> next = new ArrayList<>(history());
-          next.add(data);
-          if (next.size() > historySize) {
-            next = new ArrayList<>(next.subList(next.size() - historySize, next.size()));
-          }
-          return new WorldContext(players(), Collections.unmodifiableList(next), icon);
-        }
+  public WorldContext record(CapturedEvent event, int historySize) {
+    List<CapturedEvent> next = new ArrayList<>(history());
+    next.add(event);
+    if (next.size() > historySize) {
+      next = new ArrayList<>(next.subList(next.size() - historySize, next.size()));
     }
+    return new WorldContext(players(), Collections.unmodifiableList(next), icon);
+  }
+
+  public WorldContext apply(CapturedEvent event, int historySize) {
+    return event.applyTo(this, historySize);
+  }
+
+  void bind(EventContext context) {
+    history().forEach(event -> event.bind(context));
   }
 
   boolean valid() {
     return players().stream().allMatch(p -> p != null && p.valid())
-        && history().stream().allMatch(d -> d != null && d.valid())
+        && history().stream().allMatch(e -> e != null && e.valid())
         && (icon == null || icon.png() != null);
   }
 

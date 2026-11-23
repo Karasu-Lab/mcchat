@@ -4,6 +4,7 @@ import com.karasu256.ChatNative;
 import com.karasu256.Threads;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.PacketChannel;
+import com.karasu256.mcchat.common.event.EventRegistry;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -28,6 +29,7 @@ import java.util.function.Supplier;
 
 public final class TCPServer implements PacketChannel {
   private final Supplier<CapturedPacket> snapshot;
+  private final EventRegistry registry;
   private volatile Consumer<CapturedPacket> handler;
   private final Set<Connection> clients = ConcurrentHashMap.newKeySet();
   private final Set<Connection> upstreams = ConcurrentHashMap.newKeySet();
@@ -36,9 +38,13 @@ public final class TCPServer implements PacketChannel {
   private volatile boolean closed;
   private volatile Thread upstreamThread;
 
-  public TCPServer(Supplier<CapturedPacket> snapshot, Consumer<CapturedPacket> handler) {
+  public TCPServer(
+      Supplier<CapturedPacket> snapshot,
+      Consumer<CapturedPacket> handler,
+      EventRegistry registry) {
     this.snapshot = snapshot;
     this.handler = handler;
+    this.registry = registry;
   }
 
   public void start(int port) throws IOException {
@@ -103,7 +109,7 @@ public final class TCPServer implements PacketChannel {
   }
 
   public void receive(String line) {
-    CapturedPacket.decode(line)
+    CapturedPacket.decode(line, registry)
         .ifPresentOrElse(
             handler::accept, () -> ChatNative.LOGGER.debug("Ignoring undecodable line"));
   }
