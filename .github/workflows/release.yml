@@ -7,23 +7,35 @@ concurrency:
   group: release
 
 jobs:
+  modules:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: list release modules
+        id: matrix
+        run: |
+          chmod +x ./gradlew
+          echo "matrix={\"include\":$(./gradlew -q releaseMatrix)}" >> "$GITHUB_OUTPUT"
+
   prepare:
+    needs: modules
     runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: mcchat
-            path: mods/mcchat
-            version-file: mods/mcchat/gradle.properties
-            fallback-version: 1.0.1
-          - name: mcchat-native
-            path: apps/MCChatNative
-            version-file: apps/MCChatNative/app/gradle.properties
-            fallback-version: 1.1.0
+      matrix: ${{ fromJSON(needs.modules.outputs.matrix) }}
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
@@ -38,13 +50,27 @@ jobs:
           git-path: ${{ matrix.path }}
           tag-prefix: ${{ matrix.name }}-v
           fallback-version: ${{ matrix.fallback-version }}
-          version-file: ${{ matrix.version-file }}
+          skip-version-file: 'true'
           input-file: CHANGELOG.md
           output-file: CHANGELOG.md
           skip-commit: 'true'
           skip-tag: 'true'
           git-push: 'false'
           skip-git-pull: 'true'
+      - name: setup jdk
+        if: steps.changelog.outputs.skipped == 'false'
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: setup gradle
+        if: steps.changelog.outputs.skipped == 'false'
+        uses: gradle/actions/setup-gradle@v6
+      - name: bump version with gradle
+        if: steps.changelog.outputs.skipped == 'false'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :modules:${{ matrix.name }}:setVersion -PnewVersion=${{ steps.changelog.outputs.version }}
       - name: create or update release pull request
         if: steps.changelog.outputs.skipped == 'false'
         uses: peter-evans/create-pull-request@v8
@@ -60,22 +86,14 @@ jobs:
           body: "Merging this pull request publishes ${{ matrix.name }} v${{ steps.changelog.outputs.version }}."
 
   publish:
+    needs: modules
     if: "${{ contains(toJSON(github.event.commits.*.message), 'release: ') }}"
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: mcchat
-            working-directory: .
-            tasks: ':mods:mcchat:build'
-            files: mods/mcchat/build/libs/*.jar
-          - name: mcchat-native
-            working-directory: apps
-            tasks: build
-            files: apps/MCChatNative/app/build/outputs/apk/*/*.apk
+      matrix: ${{ fromJSON(needs.modules.outputs.matrix) }}
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
