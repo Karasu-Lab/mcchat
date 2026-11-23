@@ -123,7 +123,9 @@ import com.karasu256.mcchatnative.R
 import com.karasu256.mcchatnative.model.ChatMessage
 import com.karasu256.mcchatnative.model.MessageReaction
 import com.karasu256.mcchatnative.model.ReactionData
+import com.karasu256.mcchatnative.data.WorldRegistry
 import com.karasu256.mcchatnative.model.User
+import com.karasu256.mcchatnative.model.World
 import com.karasu256.mcchatnative.model.UserId
 import com.karasu256.mcchatnative.ui.PageTransitions
 import com.karasu256.mcchatnative.ui.StatusDot
@@ -339,8 +341,8 @@ private fun MessageList(
                     heights = heights,
                     tops = tops,
                 ) {
-                    if (message.isWorldChange) {
-                        WorldDivider(message.body)
+                    message.world?.let { world ->
+                        WorldDivider(world)
                         return@ViewportItem
                     }
                     MessageRow(
@@ -380,7 +382,9 @@ private fun MessageList(
 }
 
 @Composable
-private fun WorldDivider(worldName: String) {
+private fun WorldDivider(world: World) {
+    val registry by WorldRegistry.worlds.collectAsStateWithLifecycle()
+    val worldName = (registry[world.id] ?: world).name
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -388,7 +392,11 @@ private fun WorldDivider(worldName: String) {
     ) {
         HorizontalDivider(modifier = Modifier.weight(1f))
         Text(
-            text = stringResource(R.string.chat_world_entered, worldName),
+            text = if (worldName.isBlank()) {
+                stringResource(R.string.chat_world_changed)
+            } else {
+                stringResource(R.string.chat_world_entered, worldName)
+            },
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -9,6 +9,7 @@ import com.karasu256.mcchatnative.model.ChatEvent
 import com.karasu256.mcchatnative.model.ChatMessage
 import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
+import com.karasu256.mcchatnative.model.World
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
@@ -32,7 +33,7 @@ object ConnectedChatEventSource : ChatEventSource {
                 emit(
                     ChatEvent.WorldChanged(
                         worldChange.id().leastSignificantBits,
-                        worldChange.content().orElse(""),
+                        World(packet.world().id(), worldChange.content().orElse("")),
                         worldChange.timestampMillis(),
                     ),
                 )

@@ -10,6 +10,7 @@ import com.karasu256.mcchatnative.model.Client
 import com.karasu256.mcchatnative.model.ConnectionInfo
 import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.UserId
+import com.karasu256.mcchatnative.model.World
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +60,7 @@ object ConnectionManager {
         if (store != null) return
         SkinCache.init(context)
         ChatHistoryStore.init(context)
+        WorldRegistry.init(context)
         val connectionStore = ConnectionStore(context)
         store = connectionStore
         scope.launch {
@@ -171,6 +173,11 @@ object ConnectionManager {
                 }
             }
             return
+        }
+        val worldChange = packet.data().orElse(null)
+            ?.takeIf { packet.type() == CapturedPacket.Type.RESET && it.kind() == CapturedData.Kind.WORLD_CHANGED }
+        if (worldChange != null) {
+            WorldRegistry.register(World(packet.world().id(), worldChange.content().orElse("")))
         }
         cacheSkins(packet)
         stream(clientId).tryEmit(packet)
