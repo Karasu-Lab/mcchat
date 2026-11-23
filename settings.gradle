@@ -13,5 +13,3 @@ rootProject.name = 'mcchat-workspace'
 
 include 'mods:mcchat'
 file('modules').eachDir { include "modules:${it.name}" }
-
-includeBuild 'apps'
