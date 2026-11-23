@@ -3,6 +3,10 @@ plugins {
 	id 'maven-publish'
 }
 
+if (project.hasProperty('commitHash')) {
+	version = "${project.version}-${project.minecraft_version}-fabric-${project.commitHash}"
+}
+
 repositories {
 	maven {
 		name = 'TerraformersMC'

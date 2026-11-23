@@ -1,4 +1,6 @@
-def releaseModules = subprojects.findAll { it.path.startsWith(':modules:') && it.hasProperty('releasePath') }
+apply from: 'gradle/signing.gradle'
+
+def releaseModules =subprojects.findAll { it.path.startsWith(':modules:') && it.hasProperty('releasePath') }
 
 project(':modules:common') {
 	repositories {

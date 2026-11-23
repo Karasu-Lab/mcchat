@@ -1,0 +1,50 @@
+import groovy.io.FileType
+
+subprojects {
+	def signArtifacts = tasks.register('signArtifacts') {
+		def buildDir = layout.buildDirectory.asFile
+		def privateKey = providers.environmentVariable('ANDROID_SIGNING_PRIVATE_KEY')
+		def passphrase = providers.environmentVariable('ANDROID_SIGNING_PASSPHRASE')
+		def keyId = providers.environmentVariable('ANDROID_SIGNING_KEY_ID')
+		onlyIf { privateKey.present }
+		doLast {
+			def artifacts = []
+			[new File(buildDir.get(), 'libs'), new File(buildDir.get(), 'outputs')].each { dir ->
+				if (dir.directory) {
+					dir.eachFileRecurse(FileType.FILES) {
+						if (it.name ==~ /.*\.(jar|apk|aab)/ && it.parentFile.name in ['libs', 'release']) {
+							artifacts << it
+						}
+					}
+				}
+			}
+			if (artifacts.empty) {
+				return
+			}
+
+			def gpg = { String input, List<String> args ->
+				def process = new ProcessBuilder(['gpg', '--batch'] + args)
+					.redirectErrorStream(true)
+					.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+					.start()
+				process.outputStream.withCloseable { it.write(input.bytes) }
+				if (process.waitFor() != 0) {
+					throw new GradleException("gpg ${args.first()} failed")
+				}
+			}
+
+			gpg(privateKey.get(), ['--import'])
+			artifacts.each {
+				gpg(passphrase.get(), [
+					'--yes', '--pinentry-mode', 'loopback', '--passphrase-fd', '0',
+					'--local-user', "${keyId.get()}!".toString(),
+					'--sign', '--output', "${it.path}.gpg".toString(), it.path
+				])
+			}
+		}
+	}
+
+	tasks.matching { it.name in ['assemble', 'assembleRelease', 'bundleRelease'] }.configureEach {
+		finalizedBy signArtifacts
+	}
+}
