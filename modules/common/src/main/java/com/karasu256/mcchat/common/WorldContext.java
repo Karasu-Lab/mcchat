@@ -65,6 +65,7 @@ public final class WorldContext {
       case OFFLINE:
       case TYPING_STARTED:
       case TYPING_STOPPED:
+      case WORLD_CHANGED:
         return this;
       default:
         {

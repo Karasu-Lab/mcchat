@@ -69,16 +69,15 @@ public class ChatNativeClient implements ClientModInitializer {
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
-      pipeline.reset("localhost", local.getWorldData().getLevelName(), Origin.SERVER);
+      pipeline.reset("", local.getWorldData().getLevelName(), Origin.SERVER);
       local.execute(() ->
           pipeline.submit(
               CapturedData.playerList(Origin.SERVER, ServerCapture.onlinePlayers(local))));
       return;
     }
     ServerData server = client.getCurrentServer();
-    String host = server == null ? "" : hostOf(server.ip);
     String name = server == null ? "" : server.name;
-    pipeline.reset(host, name, Origin.CLIENT);
+    pipeline.reset("", name, Origin.CLIENT);
   }
 
   private void connectUpstream(
