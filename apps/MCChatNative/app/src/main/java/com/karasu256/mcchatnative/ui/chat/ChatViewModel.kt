@@ -3,11 +3,13 @@ package com.karasu256.mcchatnative.ui.chat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.karasu256.mcchatnative.data.ChatEventSource
+import com.karasu256.mcchatnative.data.ChatHistoryStore
 import com.karasu256.mcchatnative.data.ChatRepository
 import com.karasu256.mcchatnative.data.ClientRepository
+import com.karasu256.mcchatnative.data.ConnectionManager
 import com.karasu256.mcchatnative.model.ChatEvent
 import com.karasu256.mcchatnative.model.ChatMessage
-import com.karasu256.mcchatnative.model.ChatUser
+import com.karasu256.mcchatnative.model.User
 import com.karasu256.mcchatnative.model.Client
 import com.karasu256.mcchatnative.model.MessageReaction
 import com.karasu256.mcchatnative.model.ReactionData
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -48,15 +52,16 @@ data class ChatUiState(
     val client: Client? = null,
     val messages: List<ChatMessage> = emptyList(),
     val draft: String = "",
-    val typingUsers: List<ChatUser> = emptyList(),
+    val typingUsers: List<User> = emptyList(),
     val reactions: List<ReactionData> = emptyList(),
-    val activeUsers: List<ChatUser> = emptyList(),
+    val activeUsers: List<User> = emptyList(),
     val replyingToId: Long? = null,
     val mentionEnabled: Boolean = true,
+    val inWorld: Boolean = false,
 ) {
     val replyTarget: ChatMessage? get() = messages.firstOrNull { it.id == replyingToId }
-    val canSend: Boolean get() = draft.isNotBlank()
-    val headerUsers: List<ChatUser> get() = activeUsers.take(HeaderUserLimit)
+    val canSend: Boolean get() = inWorld && draft.isNotBlank()
+    val headerUsers: List<User> get() = activeUsers.take(HeaderUserLimit)
 }
 
 class ChatViewModel(
@@ -65,8 +70,8 @@ class ChatViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         ChatUiState(
-            currentUserId = ClientRepository.currentUser.id,
-            client = ClientRepository.findClient(clientId),
+            currentUserId = (ConnectionManager.selfOf(clientId) ?: ClientRepository.currentUser).id,
+            client = ConnectionManager.findClient(clientId),
             reactions = Reactions.generate().take(ReactionLimit),
         ),
     )
@@ -78,20 +83,53 @@ class ChatViewModel(
     private val _outgoingReactions = MutableSharedFlow<ReactionIntent>(extraBufferCapacity = 8)
     val outgoingReactions: SharedFlow<ReactionIntent> = _outgoingReactions.asSharedFlow()
 
+    private var selfUser = ConnectionManager.selfOf(clientId) ?: ClientRepository.currentUser
+    private var clearedAt = 0L
     private var nextLocalId = -1L
     private var localTypingIdle: Job? = null
     private val remoteTypingTimeouts = HashMap<UserId, Job>()
 
     init {
         viewModelScope.launch {
+            ConnectionManager.clients.collect { list ->
+                _uiState.update { state -> state.copy(client = list.firstOrNull { it.id == clientId }) }
+            }
+        }
+        viewModelScope.launch {
+            ConnectionManager.inWorld(clientId).collect { inWorld ->
+                _uiState.update { it.copy(inWorld = inWorld) }
+            }
+        }
+        viewModelScope.launch {
+            ConnectionManager.self(clientId).collect { user ->
+                if (user != null) {
+                    selfUser = user
+                    _uiState.update { it.copy(currentUserId = user.id) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            outgoingTyping.collect { source.sendTyping(clientId, it) }
+        }
+        viewModelScope.launch {
             source.activeUsers(clientId).collect { users ->
                 _uiState.update { it.copy(activeUsers = users) }
             }
         }
         viewModelScope.launch {
+            ConnectionManager.hostOf(clientId)?.let { host ->
+                clearedAt = ChatHistoryStore.clearedAt(host)
+                val restored = ChatHistoryStore.load(host)
+                nextLocalId = minOf(restored.minOfOrNull { it.id } ?: 0, 0) - 1
+                _uiState.update { it.copy(messages = restored + it.messages) }
+                launch {
+                    _uiState.map { it.messages }.distinctUntilChanged().collect { ChatHistoryStore.save(host, it) }
+                }
+            }
             source.events(clientId).collect { event ->
                 when (event) {
-                    is ChatEvent.Message -> receiveMessage(event.id, event.sender, event.body, event.replyId, event.isReply)
+                    is ChatEvent.Message ->
+                        receiveMessage(event.id, event.sender, event.body, event.replyId, event.isReply, event.timestampMillis)
                     is ChatEvent.Typing -> receiveTyping(event.user, event.isTyping)
                     is ChatEvent.Reaction -> receiveReaction(event.intent)
                 }
@@ -109,13 +147,13 @@ class ChatViewModel(
     }
 
     fun sendMessage() {
+        if (!_uiState.value.canSend) return
         val body = _uiState.value.draft.trim()
-        if (body.isEmpty()) return
         stopLocalTyping()
         val state = _uiState.value
         val message = newMessage(
             id = nextLocalId--,
-            sender = ClientRepository.currentUser,
+            sender = selfUser,
             body = body,
             replyId = state.replyingToId,
             isReply = state.replyingToId != null && state.mentionEnabled,
@@ -175,12 +213,34 @@ class ChatViewModel(
         }
     }
 
-    fun receiveMessage(id: Long, sender: ChatUser, body: String, replyId: Long? = null, isReply: Boolean = false) {
+    fun receiveMessage(
+        id: Long,
+        sender: User,
+        body: String,
+        replyId: Long? = null,
+        isReply: Boolean = false,
+        timestampMillis: Long = System.currentTimeMillis(),
+    ) {
         clearRemoteTyping(sender.id)
-        _uiState.update { it.copy(messages = it.messages + newMessage(id, sender, body, replyId, isReply)) }
+        if (timestampMillis <= clearedAt) return
+        _uiState.update {
+            if (it.messages.any { message -> message.id == id }) {
+                it
+            } else {
+                it.copy(messages = it.messages + newMessage(id, sender, body, replyId, isReply, timestampMillis))
+            }
+        }
     }
 
-    fun receiveTyping(user: ChatUser, isTyping: Boolean) {
+    fun clearHistory() {
+        clearedAt = System.currentTimeMillis()
+        _uiState.update { it.copy(messages = emptyList()) }
+        ConnectionManager.hostOf(clientId)?.let { host ->
+            viewModelScope.launch { ChatHistoryStore.clear(host) }
+        }
+    }
+
+    fun receiveTyping(user: User, isTyping: Boolean) {
         if (isTyping) {
             _uiState.update { state ->
                 if (state.typingUsers.any { it.id == user.id }) state else state.copy(typingUsers = state.typingUsers + user)
@@ -196,7 +256,7 @@ class ChatViewModel(
     }
 
     private fun startLocalTyping() {
-        val self = ClientRepository.currentUser
+        val self = selfUser
         if (_uiState.value.typingUsers.none { it.id == self.id }) {
             _uiState.update { it.copy(typingUsers = it.typingUsers + self) }
             _outgoingTyping.tryEmit(true)
@@ -211,7 +271,7 @@ class ChatViewModel(
     private fun stopLocalTyping() {
         localTypingIdle?.cancel()
         localTypingIdle = null
-        val selfId = ClientRepository.currentUser.id
+        val selfId = selfUser.id
         if (_uiState.value.typingUsers.any { it.id == selfId }) {
             _uiState.update { state -> state.copy(typingUsers = state.typingUsers.filter { it.id != selfId }) }
             _outgoingTyping.tryEmit(false)
@@ -225,15 +285,16 @@ class ChatViewModel(
 
     private fun newMessage(
         id: Long,
-        sender: ChatUser,
+        sender: User,
         body: String,
         replyId: Long?,
         isReply: Boolean,
+        timestampMillis: Long = System.currentTimeMillis(),
     ) = ChatMessage(
         id = id,
         sender = sender,
         body = body,
-        timestampMillis = System.currentTimeMillis(),
+        timestampMillis = timestampMillis,
         replyId = replyId,
         isReply = isReply,
     )

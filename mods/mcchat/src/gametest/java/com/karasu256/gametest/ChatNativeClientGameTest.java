@@ -1,11 +1,11 @@
 package com.karasu256.gametest;
 
 import com.karasu256.ChatNative;
-import com.karasu256.capture.CapturedData;
-import com.karasu256.capture.CapturedData.Kind;
-import com.karasu256.capture.CapturedPacket;
-import com.karasu256.capture.Origin;
-import com.karasu256.capture.WorldData;
+import com.karasu256.mcchat.common.CapturedData;
+import com.karasu256.mcchat.common.CapturedData.Kind;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.WorldData;
 import com.karasu256.net.CaptureEndpointPayload;
 import java.io.BufferedReader;
 import java.io.IOException;

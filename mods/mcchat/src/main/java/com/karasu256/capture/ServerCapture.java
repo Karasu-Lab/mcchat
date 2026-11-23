@@ -1,7 +1,10 @@
 package com.karasu256.capture;
 
 import com.karasu256.ChatNative;
-import com.karasu256.capture.CapturedData.Kind;
+import com.karasu256.mcchat.common.CapturedData;
+import com.karasu256.mcchat.common.CapturedData.Kind;
+import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.PlayerRef;
 import java.util.List;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;

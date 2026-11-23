@@ -1,7 +1,9 @@
 package com.karasu256;
 
 import com.karasu256.capture.CapturePipeline;
-import com.karasu256.capture.Origin;
+import com.karasu256.mcchat.common.CapturedData;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.Origin;
 import com.karasu256.capture.ServerCapture;
 import com.karasu256.config.ChatNativeConfig;
 import com.karasu256.net.CaptureEndpointPayload;
@@ -71,7 +73,18 @@ public class ChatNative implements ModInitializer {
   private static void startDedicatedCapture(MinecraftServer server) {
     dedicatedPipeline = new CapturePipeline();
     dedicatedPipeline.reset("", server.getMotd(), Origin.SERVER);
-    TCPServer tcp = new TCPServer(dedicatedPipeline::snapshot, packet -> {});
+    dedicatedPipeline.setOnline(true, null);
+    CapturePipeline pipeline = dedicatedPipeline;
+    TCPServer tcp =
+        new TCPServer(
+            pipeline::snapshot,
+            packet -> {
+              if (packet.type() == CapturedPacket.Type.PING) {
+                pipeline.requestStatus();
+              } else if (packet.type() == CapturedPacket.Type.EVENT) {
+                packet.data().filter(ChatNative::isTyping).ifPresent(data -> relayTyping(pipeline, data));
+              }
+            });
     try {
       tcp.start(config.serverPort);
     } catch (IOException e) {
@@ -80,6 +93,23 @@ public class ChatNative implements ModInitializer {
     }
     dedicatedPipeline.addSink(new TCPSink(tcp));
     dedicatedServer = tcp;
+  }
+
+  private static boolean isTyping(CapturedData data) {
+    return data.kind() == CapturedData.Kind.TYPING_STARTED
+        || data.kind() == CapturedData.Kind.TYPING_STOPPED;
+  }
+
+  private static void relayTyping(CapturePipeline pipeline, CapturedData data) {
+    pipeline.submit(
+        new CapturedData(
+            data.id(),
+            data.timestampMillis(),
+            Origin.SERVER,
+            data.kind(),
+            data.player(),
+            data.content(),
+            data.players()));
   }
 
   private static void stopDedicatedCapture() {

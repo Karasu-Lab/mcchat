@@ -2,7 +2,7 @@ package com.karasu256.mcchatnative.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.karasu256.mcchatnative.data.ClientRepository
+import com.karasu256.mcchatnative.data.ConnectionManager
 import com.karasu256.mcchatnative.model.Client
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,9 +24,25 @@ class SearchViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            clients = ClientRepository.loadClients()
-            _uiState.update { it.copy(isLoading = false, results = match(it.query)) }
+            ConnectionManager.clients.collect { list ->
+                clients = list
+                _uiState.update { it.copy(isLoading = false, results = match(it.query)) }
+            }
         }
+    }
+
+    suspend fun addConnection(input: String): Boolean {
+        val trimmed = input.trim()
+        val separator = trimmed.lastIndexOf(':')
+        val port = if (separator > 0) trimmed.substring(separator + 1).toIntOrNull() else null
+        val host = if (port != null) trimmed.substring(0, separator) else trimmed
+        if (host.isEmpty() || !ConnectionManager.probe(host, port ?: DefaultPort)) return false
+        ConnectionManager.add(host, port ?: DefaultPort)
+        return true
+    }
+
+    fun removeConnection(clientId: String) {
+        viewModelScope.launch { ConnectionManager.remove(clientId) }
     }
 
     fun search(q: String) {
@@ -44,6 +60,7 @@ class SearchViewModel : ViewModel() {
     }
 
     private companion object {
+        const val DefaultPort = 25570
         val WhitespaceRegex = Regex("\\s+")
     }
 }

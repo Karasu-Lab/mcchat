@@ -11,14 +11,45 @@ data class Client(
     val isOnline: Boolean,
 )
 
+@Serializable
+data class ConnectionInfo(
+    val id: String,
+    val host: String,
+    val port: Int,
+    val userId: String? = null,
+    val userName: String? = null,
+)
+
+@Serializable
+data class ConnectionStoreData(
+    val connections: List<ConnectionInfo> = emptyList(),
+)
+
+@Serializable
+data class StoredMessage(
+    val id: Long,
+    val senderId: String,
+    val senderName: String,
+    val body: String,
+    val timestampMillis: Long,
+    val replyId: Long? = null,
+    val isReply: Boolean = false,
+)
+
+@Serializable
+data class ChatHistoryData(
+    val histories: Map<String, List<StoredMessage>> = emptyMap(),
+    val clearedAt: Map<String, Long> = emptyMap(),
+)
+
 @JvmInline
 value class UserId(val value: String)
 
-data class ChatUser(val id: UserId, val name: String)
+data class User(val id: UserId, val name: String)
 
 data class ChatMessage(
     val id: Long,
-    val sender: ChatUser,
+    val sender: User,
     val body: String,
     val timestampMillis: Long,
     val replyId: Long? = null,
@@ -56,12 +87,13 @@ data class ThreadStoreData(
 sealed interface ChatEvent {
     data class Message(
         val id: Long,
-        val sender: ChatUser,
+        val sender: User,
         val body: String,
         val replyId: Long? = null,
         val isReply: Boolean = false,
+        val timestampMillis: Long = System.currentTimeMillis(),
     ) : ChatEvent
-    data class Typing(val user: ChatUser, val isTyping: Boolean) : ChatEvent
+    data class Typing(val user: User, val isTyping: Boolean) : ChatEvent
     data class Reaction(val intent: ReactionIntent) : ChatEvent
 }
 

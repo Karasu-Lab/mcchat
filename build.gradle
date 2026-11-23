@@ -1,4 +1,10 @@
-def releaseModules = subprojects.findAll { it.path.startsWith(':modules:') }
+def releaseModules = subprojects.findAll { it.path.startsWith(':modules:') && it.hasProperty('releasePath') }
+
+project(':modules:common') {
+	repositories {
+		mavenCentral()
+	}
+}
 
 tasks.register('releaseMatrix') {
 	group = 'release'

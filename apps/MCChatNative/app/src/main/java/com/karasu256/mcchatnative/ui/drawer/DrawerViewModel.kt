@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.karasu256.mcchatnative.data.ClientRepository
+import com.karasu256.mcchatnative.data.ConnectionManager
 import com.karasu256.mcchatnative.data.ThreadRepository
 import com.karasu256.mcchatnative.model.ChatThread
 import com.karasu256.mcchatnative.model.DrawerSection
@@ -29,15 +30,21 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         viewModelScope.launch {
-            threadRepository.syncWithClients(ClientRepository.loadClients())
             val user = ClientRepository.loadUser()
             _uiState.update { it.copy(user = user) }
+        }
+        viewModelScope.launch {
+            ConnectionManager.clients.collect { threadRepository.syncWithClients(it) }
         }
         viewModelScope.launch {
             threadRepository.threads.collect { threads ->
                 _uiState.update { it.copy(sections = threads.toSections()) }
             }
         }
+    }
+
+    fun onClientRemoved(clientId: String) {
+        viewModelScope.launch { threadRepository.removeClient(clientId) }
     }
 
     fun onThreadSelected(threadId: String) = _uiState.update { it.copy(selectedThreadId = threadId) }

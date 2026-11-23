@@ -1,7 +1,8 @@
 package com.karasu256.net;
 
 import com.karasu256.ChatNative;
-import com.karasu256.capture.CapturedPacket;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.PacketChannel;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -18,9 +19,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public final class TCPServer implements AutoCloseable {
+public final class TCPServer implements PacketChannel {
   private final Supplier<CapturedPacket> snapshot;
-  private final Consumer<CapturedPacket> handler;
+  private volatile Consumer<CapturedPacket> handler;
   private final Set<Connection> clients = ConcurrentHashMap.newKeySet();
   private final Set<Connection> upstreams = ConcurrentHashMap.newKeySet();
 
@@ -47,6 +48,19 @@ public final class TCPServer implements AutoCloseable {
     return socket == null ? -1 : socket.getLocalPort();
   }
 
+  public void sendUpstream(CapturedPacket packet) {
+    String line = packet.encode();
+    for (Connection upstream : upstreams) {
+      upstream.enqueue(line);
+    }
+  }
+
+  @Override
+  public void setListener(Consumer<CapturedPacket> listener) {
+    this.handler = listener;
+  }
+
+  @Override
   public void send(CapturedPacket packet) {
     String line = packet.encode();
     for (Connection client : clients) {
@@ -105,6 +119,7 @@ public final class TCPServer implements AutoCloseable {
         Connection connection = new Connection(socket, upstreams);
         upstreams.add(connection);
         backoff = 1_000;
+        connection.startWriter();
         onState.accept(true);
         connection.readLoop();
       } catch (IOException e) {
@@ -148,8 +163,12 @@ public final class TCPServer implements AutoCloseable {
     }
 
     void start() {
-      Thread.ofVirtual().name("chatnative-tcp-write").start(this::writeLoop);
+      startWriter();
       Thread.ofVirtual().name("chatnative-tcp-read").start(this::readLoop);
+    }
+
+    void startWriter() {
+      Thread.ofVirtual().name("chatnative-tcp-write").start(this::writeLoop);
     }
 
     void enqueue(String line) {

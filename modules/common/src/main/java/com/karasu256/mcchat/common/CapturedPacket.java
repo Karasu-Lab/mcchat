@@ -1,0 +1,88 @@
+package com.karasu256.mcchat.common;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
+
+public final class CapturedPacket {
+  public enum Type {
+    SNAPSHOT,
+    RESET,
+    EVENT,
+    PING,
+    STATUS
+  }
+
+  private final Type type;
+  private final Origin authority;
+  private final WorldData world;
+  private final Optional<CapturedData> data;
+
+  public CapturedPacket(Type type, Origin authority, WorldData world, Optional<CapturedData> data) {
+    this.type = type;
+    this.authority = authority;
+    this.world = world;
+    this.data = data;
+  }
+
+  public Type type() {
+    return type;
+  }
+
+  public Origin authority() {
+    return authority;
+  }
+
+  public WorldData world() {
+    return world;
+  }
+
+  public Optional<CapturedData> data() {
+    return data;
+  }
+
+  public static CapturedPacket event(Origin authority, WorldData world, CapturedData data) {
+    return new CapturedPacket(Type.EVENT, authority, world.withoutContext(), Optional.of(data));
+  }
+
+  public String encode() {
+    JsonObject json = new JsonObject();
+    json.addProperty("type", type.name().toLowerCase(Locale.ROOT));
+    json.addProperty("authority", authority.wireName());
+    json.add("world", world.toJson());
+    data.ifPresent(d -> json.add("data", d.toJson()));
+    return json.toString();
+  }
+
+  public static Optional<CapturedPacket> decode(String line) {
+    try {
+      JsonObject json = JsonParser.parseString(line).getAsJsonObject();
+      return Optional.of(
+          new CapturedPacket(
+              Type.valueOf(json.get("type").getAsString().toUpperCase(Locale.ROOT)),
+              Origin.fromWireName(json.get("authority").getAsString()),
+              WorldData.fromJson(json.getAsJsonObject("world")),
+              json.has("data")
+                  ? Optional.of(CapturedData.fromJson(json.getAsJsonObject("data")))
+                  : Optional.empty()));
+    } catch (RuntimeException e) {
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof CapturedPacket
+        && type == ((CapturedPacket) o).type
+        && authority == ((CapturedPacket) o).authority
+        && world.equals(((CapturedPacket) o).world)
+        && data.equals(((CapturedPacket) o).data);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, authority, world, data);
+  }
+}

@@ -1,7 +1,7 @@
 package com.karasu256.net;
 
 import com.karasu256.capture.CaptureSink;
-import com.karasu256.capture.CapturedPacket;
+import com.karasu256.mcchat.common.CapturedPacket;
 
 public final class TCPSink implements CaptureSink {
   private final TCPServer server;

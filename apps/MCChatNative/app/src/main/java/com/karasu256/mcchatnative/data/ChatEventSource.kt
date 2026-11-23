@@ -2,7 +2,7 @@ package com.karasu256.mcchatnative.data
 
 import com.karasu256.mcchatnative.model.ChatEvent
 import com.karasu256.mcchatnative.model.ChatMessage
-import com.karasu256.mcchatnative.model.ChatUser
+import com.karasu256.mcchatnative.model.User
 import kotlinx.coroutines.flow.Flow
 
 interface ChatEventSource {
@@ -10,7 +10,9 @@ interface ChatEventSource {
 
     suspend fun send(clientId: String, message: ChatMessage)
 
-    fun activeUsers(clientId: String): Flow<List<ChatUser>>
+    suspend fun sendTyping(clientId: String, isTyping: Boolean) {}
+
+    fun activeUsers(clientId: String): Flow<List<User>>
 }
 
-object ChatRepository : ChatEventSource by DemoChatEventSource
+object ChatRepository : ChatEventSource by ConnectedChatEventSource

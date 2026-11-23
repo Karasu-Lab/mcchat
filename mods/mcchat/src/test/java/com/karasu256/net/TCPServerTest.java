@@ -3,11 +3,11 @@ package com.karasu256.net;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import com.karasu256.capture.CapturedData;
-import com.karasu256.capture.CapturedData.Kind;
-import com.karasu256.capture.CapturedPacket;
-import com.karasu256.capture.Origin;
-import com.karasu256.capture.WorldData;
+import com.karasu256.mcchat.common.CapturedData;
+import com.karasu256.mcchat.common.CapturedData.Kind;
+import com.karasu256.mcchat.common.CapturedPacket;
+import com.karasu256.mcchat.common.Origin;
+import com.karasu256.mcchat.common.WorldData;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
