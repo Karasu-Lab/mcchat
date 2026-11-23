@@ -69,23 +69,56 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew ${{ matrix.tasks }}
-      - name: write file table
+      - name: upload files and publish release
         if: env.RELEASED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ fromJSON(needs.release-please.outputs.tags)[format('{0}--tag_name', matrix.path)] }}
+          MODULE_PATH: ${{ matrix.path }}
+          MODULE_FILES: ${{ matrix.files }}
+          MODULE_VERSION: ${{ fromJSON(needs.release-please.outputs.tags)[format('{0}--version', matrix.path)] }}
         run: |
+          set -euo pipefail
+
+          files=()
+          shopt -s nullglob
+          for pattern in $MODULE_FILES; do
+            matches=( $pattern )
+            if [ "${#matches[@]}" -gt 0 ]; then
+              files+=( "${matches[@]}" )
+            fi
+          done
+          shopt -u nullglob
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No build artifacts matched: $MODULE_FILES" >&2
+            exit 1
+          fi
+
+          gh release upload "$TAG_NAME" "${files[@]}" --clobber
+
+          gh release view "$TAG_NAME" --json body --jq '.body // ""' > "${RUNNER_TEMP}/release-body.md"
+
+          start="<!-- mcchat-file-table:${MODULE_PATH}:start -->"
+          end="<!-- mcchat-file-table:${MODULE_PATH}:end -->"
+          awk -v start="$start" -v end="$end" '
+            $0 == start { skipping = 1; next }
+            $0 == end { skipping = 0; next }
+            !skipping { print }
+          ' "${RUNNER_TEMP}/release-body.md" > "${RUNNER_TEMP}/release-body-base.md"
+
           {
+            cat "${RUNNER_TEMP}/release-body-base.md"
+            echo
+            echo "$start"
             echo
             echo "| File | Version | SHA256 |"
             echo "| --- | --- | --- |"
-            for file in ${{ matrix.files }}; do
-              echo "| \`$(basename "$file")\` | ${{ fromJSON(needs.release-please.outputs.tags)[format('{0}--version', matrix.path)] }} | \`$(sha256sum "$file" | cut -d' ' -f1)\` |"
+            for file in "${files[@]}"; do
+              echo "| \`$(basename "$file")\` | $MODULE_VERSION | \`$(sha256sum "$file" | cut -d' ' -f1)\` |"
             done
-          } > "${{ runner.temp }}/files.md"
-      - name: upload files, append table and publish release
-        if: env.RELEASED == 'true'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ fromJSON(needs.release-please.outputs.tags)[format('{0}--tag_name', matrix.path)] }}
-          files: ${{ matrix.files }}
-          body_path: ${{ runner.temp }}/files.md
-          append_body: true
-          draft: false
+            echo
+            echo "$end"
+          } > "${RUNNER_TEMP}/release-body-new.md"
+
+          gh release edit "$TAG_NAME" --notes-file "${RUNNER_TEMP}/release-body-new.md" --draft=false
