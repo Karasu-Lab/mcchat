@@ -9,12 +9,14 @@ import com.karasu256.mcchat.common.PlayerRef;
 import com.mojang.blaze3d.systems.RenderSystem;
 import java.util.List;
 import java.util.UUID;
+import net.minecraft.client.GuiMessageTag;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
@@ -96,20 +98,14 @@ public final class ChatUi {
     if (isActive()
         && reply != null
         && inside(mouseX, mouseY, 0, replyRowTop(screen), screen.width, m.replyRowHeight)) {
-      if (reply.sender() != null
-          && inside(
-              mouseX,
-              mouseY,
-              m.vanillaChatLeft,
-              replyRowTop(screen) + (m.replyButton - m.avatar) / 2,
-              m.avatar,
-              m.avatar)) {
-        g.renderComponentTooltip(
-            font,
-            ChatTextRenderer.playerInfo(reply.sender().uuid(), reply.sender().name())
-                .getTooltipLines(),
-            mouseX,
-            mouseY);
+      if (inside(
+          mouseX,
+          mouseY,
+          m.vanillaChatLeft,
+          replyRowTop(screen) + (m.replyButton - m.avatar) / 2,
+          m.avatar,
+          m.avatar)) {
+        g.renderComponentTooltip(font, senderTooltip(reply.sender()), mouseX, mouseY);
       }
       return;
     }
@@ -123,15 +119,9 @@ public final class ChatUi {
       if (!(cached.rows().get(i) instanceof MessageRow row)) {
         continue;
       }
-      PlayerRef sender = row.message().sender();
-      if (sender != null
-          && inside(
-              x, y, m.listPadH, origin + cached.tops()[i] + row.avatarY(), m.avatar, m.avatar)) {
-        g.renderComponentTooltip(
-            font,
-            ChatTextRenderer.playerInfo(sender.uuid(), sender.name()).getTooltipLines(),
-            mouseX,
-            mouseY);
+      if (inside(
+          x, y, m.listPadH, origin + cached.tops()[i] + row.avatarY(), m.avatar, m.avatar)) {
+        g.renderComponentTooltip(font, senderTooltip(row.message().sender()), mouseX, mouseY);
         return;
       }
       int textX = row.bubbleX() + m.bubblePadH;
@@ -157,6 +147,17 @@ public final class ChatUi {
         }
       }
     }
+  }
+
+  private List<Component> senderTooltip(PlayerRef sender) {
+    if (sender != null) {
+      return ChatTextRenderer.playerInfo(sender.uuid(), sender.name()).getTooltipLines();
+    }
+    GuiMessageTag tag =
+        Minecraft.getInstance().isSingleplayer()
+            ? GuiMessageTag.systemSinglePlayer()
+            : GuiMessageTag.system();
+    return List.of(tag.text());
   }
 
   public void renderHud(GuiGraphics g, int tickCount) {
@@ -267,10 +268,7 @@ public final class ChatUi {
   }
 
   public boolean mouseScrolled(Screen screen, double mouseX, double mouseY, double amount) {
-    if (!isActive()
-        || cached == null
-        || cached.rows().isEmpty()
-        || !region(screen.width, screen.height).contains(mouseX, mouseY)) {
+    if (!isActive() || cached == null || cached.rows().isEmpty()) {
       return false;
     }
     scroll += amount > 0 ? theme.metrics.scrollStep : -theme.metrics.scrollStep;
