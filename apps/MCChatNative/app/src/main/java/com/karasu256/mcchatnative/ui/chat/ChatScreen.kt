@@ -70,6 +70,7 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -338,6 +339,10 @@ private fun MessageList(
                     heights = heights,
                     tops = tops,
                 ) {
+                    if (message.isWorldChange) {
+                        WorldDivider(message.body)
+                        return@ViewportItem
+                    }
                     MessageRow(
                         message = message,
                         currentUserId = currentUserId,
@@ -371,6 +376,23 @@ private fun MessageList(
             TypingRow(typingUsers)
         }
         Spacer(Modifier.height(0.dp))
+    }
+}
+
+@Composable
+private fun WorldDivider(worldName: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f))
+        Text(
+            text = stringResource(R.string.chat_world_entered, worldName),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f))
     }
 }
 

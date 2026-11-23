@@ -130,6 +130,7 @@ class ChatViewModel(
                 when (event) {
                     is ChatEvent.Message ->
                         receiveMessage(event.id, event.sender, event.body, event.replyId, event.isReply, event.timestampMillis)
+                    is ChatEvent.WorldChanged -> receiveWorldChange(event.id, event.worldName, event.timestampMillis)
                     is ChatEvent.Typing -> receiveTyping(event.user, event.isTyping)
                     is ChatEvent.Reaction -> receiveReaction(event.intent)
                 }
@@ -228,6 +229,25 @@ class ChatViewModel(
                 it
             } else {
                 it.copy(messages = it.messages + newMessage(id, sender, body, replyId, isReply, timestampMillis))
+            }
+        }
+    }
+
+    private fun receiveWorldChange(id: Long, worldName: String, timestampMillis: Long) {
+        if (timestampMillis <= clearedAt) return
+        _uiState.update {
+            if (it.messages.any { message -> message.id == id }) {
+                it
+            } else {
+                it.copy(
+                    messages = it.messages + ChatMessage(
+                        id = id,
+                        sender = User(UserId("world"), worldName),
+                        body = worldName,
+                        timestampMillis = timestampMillis,
+                        isWorldChange = true,
+                    ),
+                )
             }
         }
     }

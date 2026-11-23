@@ -26,6 +26,17 @@ object ConnectedChatEventSource : ChatEventSource {
     override fun events(clientId: String): Flow<ChatEvent> = flow {
         val seen = HashSet<Long>()
         ConnectionManager.packets(clientId).collect { packet ->
+            val worldChange = packet.data().orElse(null)
+                ?.takeIf { packet.type() == CapturedPacket.Type.RESET && it.kind() == CapturedData.Kind.WORLD_CHANGED }
+            if (worldChange != null && seen.add(worldChange.id().leastSignificantBits)) {
+                emit(
+                    ChatEvent.WorldChanged(
+                        worldChange.id().leastSignificantBits,
+                        worldChange.content().orElse(""),
+                        worldChange.timestampMillis(),
+                    ),
+                )
+            }
             typingOf(packet)?.let { data ->
                 emit(ChatEvent.Typing(senderOf(data), data.kind() == CapturedData.Kind.TYPING_STARTED))
             }

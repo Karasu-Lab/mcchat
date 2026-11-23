@@ -34,6 +34,7 @@ data class StoredMessage(
     val timestampMillis: Long,
     val replyId: Long? = null,
     val isReply: Boolean = false,
+    val isWorldChange: Boolean = false,
 )
 
 @Serializable
@@ -55,6 +56,7 @@ data class ChatMessage(
     val replyId: Long? = null,
     val isReply: Boolean = false,
     val reactions: List<MessageReaction> = emptyList(),
+    val isWorldChange: Boolean = false,
 ) {
     fun isSentBy(userId: UserId): Boolean = sender.id == userId
 
@@ -92,6 +94,11 @@ sealed interface ChatEvent {
         val replyId: Long? = null,
         val isReply: Boolean = false,
         val timestampMillis: Long = System.currentTimeMillis(),
+    ) : ChatEvent
+    data class WorldChanged(
+        val id: Long,
+        val worldName: String,
+        val timestampMillis: Long,
     ) : ChatEvent
     data class Typing(val user: User, val isTyping: Boolean) : ChatEvent
     data class Reaction(val intent: ReactionIntent) : ChatEvent

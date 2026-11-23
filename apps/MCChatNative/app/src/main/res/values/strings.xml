@@ -15,6 +15,7 @@
     <string name="chat_active_users">アクティブなユーザー</string>
     <string name="chat_reply_cancel">返信を取り消す</string>
     <string name="chat_reply_mention">返信の通知</string>
+    <string name="chat_world_entered">%1$s に入りました</string>
     <string name="chat_menu">メニュー</string>
     <string name="chat_clear_history">履歴を削除</string>
     <string name="chat_clear_history_message">このチャットの履歴をすべて削除します。この操作は取り消せません。</string>
