@@ -40,6 +40,7 @@ public final class ClientCapture {
                 Origin.CLIENT,
                 sender == null ? null : PlayerRefs.of(sender),
                 ClientChatTextProcessor.received(
+                    sender == null ? null : sender.getId(),
                     signed != null ? signed.signedContent() : message.getString()))
             .handle());
 
@@ -49,7 +50,7 @@ public final class ClientCapture {
                 ChatNative.pipeline(),
                 Origin.CLIENT,
                 null,
-                ClientChatTextProcessor.received(message.getString()))
+                ClientChatTextProcessor.received(null, message.getString()))
             .handle();
       }
     });

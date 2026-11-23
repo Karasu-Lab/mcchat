@@ -7,12 +7,14 @@ import com.karasu256.capture.ServerCapture;
 import com.karasu256.capture.ServerWorldSource;
 import com.karasu256.client.capture.ClientCapture;
 import com.karasu256.client.capture.RemoteWorldSource;
+import com.karasu256.client.chat.ClientChatTextProcessor;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.event.CapturedEvent;
 import com.karasu256.mcchat.common.event.CommandExecutedEvent;
 import com.karasu256.mcchat.common.event.PlayerListEvent;
 import com.karasu256.net.CaptureEndpointPayload;
+import com.karasu256.net.ReceivedChatTextPayload;
 import com.karasu256.net.TCPServer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
@@ -51,6 +53,10 @@ public class ChatNativeClient implements ClientModInitializer {
     ClientPlayNetworking.registerGlobalReceiver(
         CaptureEndpointPayload.TYPE,
         (payload, player, sender) -> connectUpstream(pipeline, payload, Minecraft.getInstance()));
+
+    ClientPlayNetworking.registerGlobalReceiver(
+        ReceivedChatTextPayload.TYPE,
+        (payload, player, sender) -> ClientChatTextProcessor.structured(payload));
 
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
       tcp.stop();
