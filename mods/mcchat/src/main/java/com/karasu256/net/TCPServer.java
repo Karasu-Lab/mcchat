@@ -77,7 +77,8 @@ public final class TCPServer implements PacketChannel {
 
   public synchronized void connect(String host, int port, Consumer<Boolean> onState) {
     disconnectUpstream();
-    Thread thread = Threads.daemon("chatnative-tcp-upstream", () -> upstreamLoop(host, port, onState));
+    Thread thread =
+        Threads.daemon("chatnative-tcp-upstream", () -> upstreamLoop(host, port, onState));
     upstreamThread = thread;
     thread.start();
   }

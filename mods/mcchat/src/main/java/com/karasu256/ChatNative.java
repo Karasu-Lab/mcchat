@@ -1,11 +1,11 @@
 package com.karasu256;
 
 import com.karasu256.capture.CapturePipeline;
+import com.karasu256.capture.ServerCapture;
+import com.karasu256.config.ChatNativeConfig;
 import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
-import com.karasu256.capture.ServerCapture;
-import com.karasu256.config.ChatNativeConfig;
 import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.TCPServer;
 import com.karasu256.net.TCPSink;
@@ -78,7 +78,10 @@ public class ChatNative implements ModInitializer {
               if (packet.type() == CapturedPacket.Type.PING) {
                 pipeline.requestStatus();
               } else if (packet.type() == CapturedPacket.Type.EVENT) {
-                packet.data().filter(ChatNative::isTyping).ifPresent(data -> relayTyping(pipeline, data));
+                packet
+                    .data()
+                    .filter(ChatNative::isTyping)
+                    .ifPresent(data -> relayTyping(pipeline, data));
               }
             });
     try {

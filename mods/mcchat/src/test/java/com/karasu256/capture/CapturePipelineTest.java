@@ -9,8 +9,6 @@ import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
-import com.karasu256.mcchat.common.WorldContext;
-import com.karasu256.mcchat.common.WorldData;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

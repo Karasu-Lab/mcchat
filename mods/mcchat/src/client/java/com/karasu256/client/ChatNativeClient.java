@@ -4,11 +4,11 @@ import com.google.common.net.HostAndPort;
 import com.karasu256.ChatNative;
 import com.karasu256.capture.CapturePipeline;
 import com.karasu256.capture.ServerCapture;
+import com.karasu256.client.capture.ClientCapture;
 import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
-import com.karasu256.client.capture.ClientCapture;
 import com.karasu256.net.CaptureEndpointPayload;
 import com.karasu256.net.TCPServer;
 import com.karasu256.net.TCPSink;
@@ -56,8 +56,7 @@ public class ChatNativeClient implements ClientModInitializer {
 
     ClientPlayNetworking.registerGlobalReceiver(
         CaptureEndpointPayload.TYPE,
-        (payload, player, sender) ->
-            connectUpstream(pipeline, payload, Minecraft.getInstance()));
+        (payload, player, sender) -> connectUpstream(pipeline, payload, Minecraft.getInstance()));
 
     ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
       if (tcp != null) {
