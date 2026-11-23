@@ -71,8 +71,7 @@ public class ChatNativeClient implements ClientModInitializer {
   private static void resetWorld(CapturePipeline pipeline, Minecraft client) {
     IntegratedServer local = client.getSingleplayerServer();
     if (local != null) {
-      pipeline.reset(
-          ChatNative.levelId(local), local.getWorldData().getLevelName(), Origin.SERVER);
+      pipeline.reset(ChatNative.levelId(local), local.getWorldData().getLevelName(), Origin.SERVER);
       local.execute(() ->
           pipeline.submit(
               CapturedData.playerList(Origin.SERVER, ServerCapture.onlinePlayers(local))));
