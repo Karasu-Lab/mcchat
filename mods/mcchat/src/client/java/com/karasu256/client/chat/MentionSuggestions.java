@@ -1,6 +1,5 @@
 package com.karasu256.client.chat;
 
-import com.karasu256.client.capture.ClientCapture;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.component.ChatText;
 import com.karasu256.mcchat.common.component.MentionData;
@@ -26,7 +25,7 @@ public final class MentionSuggestions {
     if (applying) {
       return;
     }
-    List<PlayerRef> players = ClientCapture.onlinePlayers();
+    List<PlayerRef> players = ClientChatTextProcessor.onlinePlayers();
     completion =
         MentionData.complete(
             ChatText.parse(input.getValue(), players), input.getCursorPosition(), players);

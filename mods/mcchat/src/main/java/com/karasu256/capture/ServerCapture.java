@@ -3,7 +3,6 @@ package com.karasu256.capture;
 import com.karasu256.ChatNative;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
-import com.karasu256.mcchat.common.component.ChatText;
 import com.karasu256.mcchat.common.event.ChatReceivedEvent;
 import com.karasu256.mcchat.common.event.ChatSentEvent;
 import com.karasu256.mcchat.common.event.CommandExecutedEvent;
@@ -11,31 +10,13 @@ import com.karasu256.mcchat.common.event.PlayerJoinedEvent;
 import com.karasu256.mcchat.common.event.PlayerLeftEvent;
 import com.karasu256.mcchat.common.event.PlayerListEvent;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class ServerCapture {
-  private static final Map<UUID, ChatText> HELD = new ConcurrentHashMap<>();
-
   private ServerCapture() {}
-
-  public static void hold(ServerPlayer player, ChatText text) {
-    if (text != null && text.valid()) {
-      HELD.put(player.getUUID(), text);
-    }
-  }
-
-  private static ChatText textOf(ServerPlayer sender, String raw, MinecraftServer server) {
-    ChatText held = HELD.remove(sender.getUUID());
-    return held != null && held.plain().equals(raw)
-        ? held
-        : ChatText.parse(raw, onlinePlayers(server));
-  }
 
   public static void register() {
     ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
@@ -44,7 +25,7 @@ public final class ServerCapture {
               ChatNative.pipelineFor(server),
               Origin.SERVER,
               PlayerRefs.of(sender.getGameProfile()),
-              textOf(sender, message.signedContent(), server))
+              ServerChatTextProcessor.received(sender, message.signedContent(), server))
           .handle();
     });
 
@@ -55,7 +36,7 @@ public final class ServerCapture {
               pipeline,
               Origin.SERVER,
               player == null ? null : PlayerRefs.of(player.getGameProfile()),
-              ChatText.parse(message.signedContent(), onlinePlayers(source.getServer())))
+              ServerChatTextProcessor.parse(message.signedContent(), source.getServer()))
           .handle();
     });
 

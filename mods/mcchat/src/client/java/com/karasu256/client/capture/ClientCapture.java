@@ -2,12 +2,12 @@ package com.karasu256.client.capture;
 
 import com.karasu256.ChatNative;
 import com.karasu256.capture.PlayerRefs;
+import com.karasu256.client.chat.ClientChatTextProcessor;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.MinecraftScreen;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
 import com.karasu256.mcchat.common.WorldData;
-import com.karasu256.mcchat.common.component.ChatText;
 import com.karasu256.mcchat.common.event.CapturedEvent;
 import com.karasu256.mcchat.common.event.ChatReceivedEvent;
 import com.karasu256.mcchat.common.event.ChatSentEvent;
@@ -17,14 +17,11 @@ import com.karasu256.mcchat.common.event.PlayerLeftEvent;
 import com.karasu256.mcchat.common.event.PlayerListEvent;
 import com.karasu256.mcchat.common.event.TypingStartedEvent;
 import com.karasu256.mcchat.common.event.TypingStoppedEvent;
-import com.karasu256.net.ChatTextPayload;
 import com.mojang.authlib.GameProfile;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -33,7 +30,6 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 public final class ClientCapture {
   private static volatile Consumer<CapturedPacket> upstream;
   private static boolean typing;
-  private static volatile ChatText outgoing;
 
   private ClientCapture() {}
 
@@ -43,8 +39,8 @@ public final class ClientCapture {
                 ChatNative.pipeline(),
                 Origin.CLIENT,
                 sender == null ? null : PlayerRefs.of(sender),
-                ChatText.parse(
-                    signed != null ? signed.signedContent() : message.getString(), onlinePlayers()))
+                ClientChatTextProcessor.received(
+                    signed != null ? signed.signedContent() : message.getString()))
             .handle());
 
     ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
@@ -53,18 +49,18 @@ public final class ClientCapture {
                 ChatNative.pipeline(),
                 Origin.CLIENT,
                 null,
-                ChatText.parse(message.getString(), onlinePlayers()))
+                ClientChatTextProcessor.received(message.getString()))
             .handle();
       }
     });
 
-    ClientSendMessageEvents.CHAT.register(message -> {
-      ChatText text = outgoingText(message);
-      if (ClientPlayNetworking.canSend(ChatTextPayload.TYPE) && hasData(text)) {
-        ClientPlayNetworking.send(new ChatTextPayload(text));
-      }
-      new ChatSentEvent(ChatNative.pipeline(), Origin.CLIENT, localPlayer(), text).handle();
-    });
+    ClientSendMessageEvents.CHAT.register(message ->
+        new ChatSentEvent(
+                ChatNative.pipeline(),
+                Origin.CLIENT,
+                localPlayer(),
+                ClientChatTextProcessor.sent(message))
+            .handle());
 
     ClientSendMessageEvents.COMMAND.register(command ->
         new CommandSentEvent(ChatNative.pipeline(), Origin.CLIENT, localPlayer(), command)
@@ -100,23 +96,8 @@ public final class ClientCapture {
     }
   }
 
-  public static void sendChat(ChatText text) {
-    outgoing = text;
-    String wire =
-        ClientPlayNetworking.canSend(ChatTextPayload.TYPE) ? text.plain() : text.stripped().plain();
-    sendToServer(wire, connection -> connection.sendChat(wire));
-  }
-
-  private static ChatText outgoingText(String message) {
-    ChatText text = outgoing;
-    outgoing = null;
-    return text != null && text.plain().equals(message)
-        ? text
-        : ChatText.parse(message, onlinePlayers());
-  }
-
-  private static boolean hasData(ChatText text) {
-    return !text.mentioned().isEmpty() || text.replyTarget().isPresent();
+  public static void sendChat(String text) {
+    sendToServer(text, connection -> connection.sendChat(text));
   }
 
   public static void sendCommand(String text) {
@@ -164,16 +145,9 @@ public final class ClientCapture {
         .getConnection()
         .getOnlinePlayers()
         .forEach(info -> ClientSkins.request(info.getProfile()));
-    new PlayerListEvent(ChatNative.pipeline(), Origin.CLIENT, onlinePlayers()).handle();
-  }
-
-  public static List<PlayerRef> onlinePlayers() {
-    ClientPacketListener connection = Minecraft.getInstance().getConnection();
-    return connection == null
-        ? List.of()
-        : connection.getOnlinePlayers().stream()
-            .map(info -> PlayerRefs.of(info.getProfile()))
-            .toList();
+    new PlayerListEvent(
+            ChatNative.pipeline(), Origin.CLIENT, ClientChatTextProcessor.onlinePlayers())
+        .handle();
   }
 
   public static PlayerRef sessionPlayer() {
