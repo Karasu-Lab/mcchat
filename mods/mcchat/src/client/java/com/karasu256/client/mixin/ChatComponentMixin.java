@@ -1,20 +1,29 @@
 package com.karasu256.client.mixin;
 
-import com.karasu256.client.capture.ClientCapture;
-import com.karasu256.mcchat.common.PlayerRef;
-import com.karasu256.mcchat.common.component.ChatText;
+import com.karasu256.client.chat.ClientChatTextProcessor;
 import java.util.List;
 import net.minecraft.client.GuiMessage;
+import net.minecraft.client.GuiMessageTag;
 import net.minecraft.client.gui.components.ChatComponent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(ChatComponent.class)
 public abstract class ChatComponentMixin {
   @Unique private GuiMessage.Line chatnative$line;
+
+  @ModifyVariable(
+      method =
+          "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/GuiMessageTag;)V",
+      at = @At("HEAD"),
+      argsOnly = true)
+  private GuiMessageTag chatnative$markMention(GuiMessageTag tag) {
+    return ClientChatTextProcessor.markMention(tag);
+  }
 
   @Redirect(
       method = "render",
@@ -35,21 +44,9 @@ public abstract class ChatComponentMixin {
       index = 4)
   private int chatnative$highlight(int color) {
     GuiMessage.Line line = chatnative$line;
-    if (line == null || !chatnative$mentionsMe(line)) {
+    if (line == null || !ClientChatTextProcessor.isMention(line.tag())) {
       return color;
     }
     return (color & 0xFF000000) | 0x00FFF3A0;
-  }
-
-  @Unique
-  private static boolean chatnative$mentionsMe(GuiMessage.Line line) {
-    StringBuilder text = new StringBuilder();
-    line.content()
-        .accept((index, style, codePoint) -> {
-          text.appendCodePoint(codePoint);
-          return true;
-        });
-    PlayerRef me = ClientCapture.sessionPlayer();
-    return ChatText.parse(text.toString(), List.of(me)).mentioned().contains(me.uuid());
   }
 }
