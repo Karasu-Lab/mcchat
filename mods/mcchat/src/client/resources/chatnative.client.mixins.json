@@ -3,7 +3,7 @@
 	"package": "com.karasu256.client.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ExampleClientMixin"
+		"ClientPacketListenerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
