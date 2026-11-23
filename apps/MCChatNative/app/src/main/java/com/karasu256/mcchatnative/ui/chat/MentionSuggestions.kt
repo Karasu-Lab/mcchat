@@ -4,15 +4,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -21,11 +27,18 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupPositionProvider
 import com.karasu256.mcchat.common.PlayerRef
 import com.karasu256.mcchat.common.component.ChatText
 import com.karasu256.mcchat.common.component.MentionData
 import com.karasu256.mcchatnative.model.User
+import com.karasu256.mcchatnative.model.UserId
 import com.karasu256.mcchatnative.model.uuid
 import java.util.Optional
 
@@ -58,30 +71,57 @@ class MentionVisualTransformation(
 
 @Composable
 fun MentionSuggestions(
-    completion: MentionData.Completion,
+    completion: MentionData.Completion?,
     onInsert: (MentionData.Inserted) -> Unit,
-    modifier: Modifier = Modifier,
     candidateLimit: Int = 5,
+    anchorGap: Dp = 8.dp,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = MaterialTheme.shapes.large,
-        modifier = modifier,
+    var shown by remember { mutableStateOf(completion) }
+    SideEffect { if (completion != null) shown = completion }
+
+    val gapPx = with(LocalDensity.current) { anchorGap.roundToPx() }
+    val positionProvider = remember(gapPx) { AboveAnchorStartPositionProvider(gapPx) }
+
+    ScalePopup(
+        visible = completion != null,
+        positionProvider = positionProvider,
+        transformOrigin = TransformOrigin(0f, 1f),
+        onDismissRequest = {},
+        focusable = false,
     ) {
-        Column {
-            completion.candidates().take(candidateLimit).forEach { player ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onInsert(completion.insert(player)) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    UserAvatar(User(com.karasu256.mcchatnative.model.UserId(player.uuid().toString()), player.name()))
-                    Text(text = player.name(), style = MaterialTheme.typography.bodyLarge)
+        shown?.let { current ->
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = MaterialTheme.shapes.large,
+                shadowElevation = 6.dp,
+            ) {
+                Column {
+                    current.candidates().take(candidateLimit).forEach { player ->
+                        Row(
+                            modifier = Modifier
+                                .clickable { onInsert(current.insert(player)) }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            UserAvatar(User(UserId(player.uuid().toString()), player.name()))
+                            Text(text = player.name(), style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+private class AboveAnchorStartPositionProvider(private val gapPx: Int) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset = IntOffset(
+        anchorBounds.left,
+        (anchorBounds.top - popupContentSize.height - gapPx).coerceAtLeast(0),
+    )
 }

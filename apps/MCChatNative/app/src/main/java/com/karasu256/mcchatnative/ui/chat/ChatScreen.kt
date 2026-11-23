@@ -869,16 +869,6 @@ private fun MessageInput(
                     )
                 }
             }
-            if (completion != null) {
-                MentionSuggestions(
-                    completion = completion,
-                    onInsert = { inserted ->
-                        field = TextFieldValue(inserted.text().plain(), TextRange(inserted.cursor()))
-                        onDraftChange(field.text)
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                )
-            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -886,24 +876,36 @@ private fun MessageInput(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                TextField(
-                    value = field,
-                    onValueChange = {
-                        field = it
-                        onDraftChange(it.text)
-                    },
-                    visualTransformation = transformation,
-                    placeholder = { Text(stringResource(R.string.chat_input_hint)) },
-                    maxLines = 4,
-                    shape = MaterialTheme.shapes.extraLarge,
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                    ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { onSend() }),
-                    modifier = Modifier.weight(1f),
-                )
+                Box(modifier = Modifier.weight(1f)) {
+                    TextField(
+                        value = field,
+                        onValueChange = {
+                            field = it
+                            onDraftChange(it.text)
+                        },
+                        visualTransformation = transformation,
+                        placeholder = { Text(stringResource(R.string.chat_input_hint)) },
+                        maxLines = 4,
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { onSend() }),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    MentionSuggestions(
+                        completion = completion,
+                        onInsert = { inserted ->
+                            field = TextFieldValue(
+                                inserted.text().plain(),
+                                TextRange(inserted.cursor()),
+                            )
+                            onDraftChange(field.text)
+                        },
+                    )
+                }
                 val defaultColors = IconButtonDefaults.filledIconButtonColors()
                 val sendContainer by animateColorAsState(
                     if (canSend) defaultColors.containerColor else defaultColors.disabledContainerColor,
