@@ -1,10 +1,14 @@
 package com.karasu256.capture;
 
 import com.karasu256.ChatNative;
-import com.karasu256.mcchat.common.CapturedData;
-import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.PlayerRef;
+import com.karasu256.mcchat.common.event.ChatReceivedEvent;
+import com.karasu256.mcchat.common.event.ChatSentEvent;
+import com.karasu256.mcchat.common.event.CommandExecutedEvent;
+import com.karasu256.mcchat.common.event.PlayerJoinedEvent;
+import com.karasu256.mcchat.common.event.PlayerLeftEvent;
+import com.karasu256.mcchat.common.event.PlayerListEvent;
 import java.util.List;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -15,52 +19,49 @@ public final class ServerCapture {
   private ServerCapture() {}
 
   public static void register() {
-    ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) ->
-        ChatNative.pipelineFor(sender.level().getServer())
-            .submit(
-                CapturedData.of(
-                    Origin.SERVER,
-                    Kind.CHAT_RECEIVED,
-                    PlayerRefs.of(sender.getGameProfile()),
-                    message.signedContent())));
+    ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
+      CapturePipeline pipeline = ChatNative.pipelineFor(sender.level().getServer());
+      new ChatReceivedEvent(
+              pipeline,
+              Origin.SERVER,
+              PlayerRefs.of(sender.getGameProfile()),
+              message.signedContent())
+          .handle();
+    });
 
-    ServerMessageEvents.COMMAND_MESSAGE.register((message, source, params) ->
-        ChatNative.pipelineFor(source.getServer())
-            .submit(
-                CapturedData.of(
-                    Origin.SERVER,
-                    Kind.CHAT_RECEIVED,
-                    source.getPlayer() == null
-                        ? null
-                        : PlayerRefs.of(source.getPlayer().getGameProfile()),
-                    message.signedContent())));
+    ServerMessageEvents.COMMAND_MESSAGE.register((message, source, params) -> {
+      CapturePipeline pipeline = ChatNative.pipelineFor(source.getServer());
+      new ChatReceivedEvent(
+              pipeline,
+              Origin.SERVER,
+              source.getPlayer() == null
+                  ? null
+                  : PlayerRefs.of(source.getPlayer().getGameProfile()),
+              message.signedContent())
+          .handle();
+    });
 
     ServerMessageEvents.GAME_MESSAGE.register((server, message, overlay) -> {
       if (!overlay) {
-        ChatNative.pipelineFor(server)
-            .submit(CapturedData.of(Origin.SERVER, Kind.CHAT_SENT, null, message.getString()));
+        new ChatSentEvent(ChatNative.pipelineFor(server), Origin.SERVER, null, message.getString())
+            .handle();
       }
     });
 
     ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
       CapturePipeline pipeline = ChatNative.pipelineFor(server);
-      pipeline.submit(CapturedData.playerList(Origin.SERVER, onlinePlayers(server)));
-      pipeline.submit(
-          CapturedData.of(
-              Origin.SERVER,
-              Kind.PLAYER_JOINED,
-              PlayerRefs.of(handler.getPlayer().getGameProfile()),
-              null));
+      new PlayerListEvent(pipeline, Origin.SERVER, onlinePlayers(server)).handle();
+      new PlayerJoinedEvent(
+              pipeline, Origin.SERVER, PlayerRefs.of(handler.getPlayer().getGameProfile()))
+          .handle();
     });
 
     ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-        ChatNative.pipelineFor(server)
-            .submit(
-                CapturedData.of(
-                    Origin.SERVER,
-                    Kind.PLAYER_LEFT,
-                    PlayerRefs.of(handler.getPlayer().getGameProfile()),
-                    null)));
+        new PlayerLeftEvent(
+                ChatNative.pipelineFor(server),
+                Origin.SERVER,
+                PlayerRefs.of(handler.getPlayer().getGameProfile()))
+            .handle());
   }
 
   public static void commandExecuted(ServerPlayer player, String command) {
@@ -68,13 +69,12 @@ public final class ServerCapture {
     if (!server.isDedicatedServer()) {
       return;
     }
-    ChatNative.pipelineFor(server)
-        .submit(
-            CapturedData.of(
-                Origin.SERVER,
-                Kind.COMMAND_EXECUTED,
-                PlayerRefs.of(player.getGameProfile()),
-                command));
+    new CommandExecutedEvent(
+            ChatNative.pipelineFor(server),
+            Origin.SERVER,
+            PlayerRefs.of(player.getGameProfile()),
+            command)
+        .handle();
   }
 
   public static List<PlayerRef> onlinePlayers(MinecraftServer server) {

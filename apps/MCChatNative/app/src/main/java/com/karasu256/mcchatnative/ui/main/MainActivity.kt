@@ -3,6 +3,7 @@ package com.karasu256.mcchatnative.ui.main
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,10 +11,8 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import com.karasu256.mcchatnative.data.ConnectionManager
-import com.karasu256.mcchatnative.data.ConnectionService
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,8 +20,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -71,7 +70,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -79,24 +80,27 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.karasu256.mcchatnative.R
-import com.karasu256.mcchatnative.model.Client
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.karasu256.mcchatnative.R
+import com.karasu256.mcchatnative.data.ConnectionManager
+import com.karasu256.mcchatnative.data.ConnectionService
+import com.karasu256.mcchatnative.model.Client
 import com.karasu256.mcchatnative.ui.PageTransitions
 import com.karasu256.mcchatnative.ui.StatusDot
-import com.ramcosta.composedestinations.DestinationsNavHost
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.NavGraphs
-import com.ramcosta.composedestinations.generated.destinations.ChatScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.karasu256.mcchatnative.ui.drawer.AppDrawer
 import com.karasu256.mcchatnative.ui.drawer.DrawerViewModel
 import com.karasu256.mcchatnative.ui.search.SearchUiState
 import com.karasu256.mcchatnative.ui.search.SearchViewModel
 import com.karasu256.mcchatnative.ui.splash.SplashScreen
 import com.karasu256.mcchatnative.ui.theme.MCChatTheme
+import com.ramcosta.composedestinations.DestinationsNavHost
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.NavGraphs
+import com.ramcosta.composedestinations.generated.destinations.ChatScreenDestination
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -128,9 +132,6 @@ class MainActivity : ComponentActivity() {
         ContextCompat.startForegroundService(this, Intent(this, ConnectionService::class.java))
     }
 }
-
-private const val DrawerShrinkScale = 0.1f
-private const val DrawerShrinkShift = 0.1f
 
 @Destination<RootGraph>(start = true, style = PageTransitions::class)
 @Composable
@@ -188,6 +189,8 @@ private fun MainContent(
     onBack: () -> Unit,
     onOpenChat: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    drawerShrinkScale: Float = 0.1f,
+    drawerShrinkShift: Float = 0.1f,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerUiState by drawerViewModel.uiState.collectAsStateWithLifecycle()
@@ -250,10 +253,11 @@ private fun MainContent(
                 onSettingsClick = onSettingsClick,
                 modifier = Modifier.graphicsLayer {
                     val offset = drawerState.currentOffset
-                    val closedness = if (offset.isNaN()) 0f else (-offset / size.width).coerceIn(0f, 1f)
+                    val closedness =
+                        if (offset.isNaN()) 0f else (-offset / size.width).coerceIn(0f, 1f)
                     val shrink = maxOf(backProgress, closedness)
-                    scaleX = 1f - DrawerShrinkScale * shrink
-                    translationX = -size.width * DrawerShrinkShift * shrink
+                    scaleX = 1f - drawerShrinkScale * shrink
+                    translationX = -size.width * drawerShrinkShift * shrink
                     transformOrigin = TransformOrigin(0f, 0.5f)
                 },
             )
@@ -321,7 +325,10 @@ private fun MainTopBar(
                 }
             } else {
                 IconButton(onClick = onMenuClick) {
-                    Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.open_drawer))
+                    Icon(
+                        Icons.Filled.Menu,
+                        contentDescription = stringResource(R.string.open_drawer)
+                    )
                 }
             }
         },
@@ -367,9 +374,16 @@ private fun AddConnectionDialog(onConfirm: suspend (String) -> Boolean, onDismis
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text(stringResource(R.string.connection_checking), style = MaterialTheme.typography.bodySmall)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Text(
+                            stringResource(R.string.connection_checking),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
+
                     failed -> Text(
                         stringResource(R.string.connection_failed),
                         style = MaterialTheme.typography.bodySmall,
@@ -449,7 +463,12 @@ private fun ClientList(
             Text(stringResource(R.string.connection_add))
         }
         if (clients.isEmpty()) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
                     text = stringResource(
                         if (search.query.isBlank()) R.string.clients_empty else R.string.clients_no_match,
@@ -459,7 +478,11 @@ private fun ClientList(
                 )
             }
         } else {
-            LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
                 items(clients, key = { it.id }) { client ->
                     SwipeToRemove(onRemoveRequest = { onRemoveRequest(client) }) {
                         ClientRow(client = client, onClick = { onClientClick(client) })
@@ -521,8 +544,20 @@ private fun ClientRow(client: Client, onClick: () -> Unit) {
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(40.dp),
             ) {
+                val icon = remember(client.icon) {
+                    client.icon?.let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }
+                }
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Text(client.name.take(1), style = MaterialTheme.typography.titleMedium)
+                    if (icon != null) {
+                        Image(
+                            bitmap = icon,
+                            contentDescription = null,
+                            filterQuality = FilterQuality.None,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Text(client.name.take(1), style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         },

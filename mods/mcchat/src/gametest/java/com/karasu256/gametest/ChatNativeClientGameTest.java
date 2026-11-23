@@ -1,11 +1,17 @@
 package com.karasu256.gametest;
 
 import com.karasu256.ChatNative;
-import com.karasu256.mcchat.common.CapturedData;
-import com.karasu256.mcchat.common.CapturedData.Kind;
 import com.karasu256.mcchat.common.CapturedPacket;
 import com.karasu256.mcchat.common.Origin;
 import com.karasu256.mcchat.common.WorldData;
+import com.karasu256.mcchat.common.event.CapturedEvent;
+import com.karasu256.mcchat.common.event.ChatReceivedEvent;
+import com.karasu256.mcchat.common.event.ChatSentEvent;
+import com.karasu256.mcchat.common.event.CommandExecutedEvent;
+import com.karasu256.mcchat.common.event.CommandSentEvent;
+import com.karasu256.mcchat.common.event.MessageEvent;
+import com.karasu256.mcchat.common.event.PlayerJoinedEvent;
+import com.karasu256.mcchat.common.event.PlayerListEvent;
 import com.karasu256.net.CaptureEndpointPayload;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -46,23 +52,24 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
       CapturedPacket reset = capture.await(context, p -> p.type() == CapturedPacket.Type.RESET);
       require(reset.authority() == Origin.CLIENT, "authority must be client without upstream");
 
-      CapturedPacket list = capture.await(context, p -> hasKind(p, Kind.PLAYER_LIST));
-      require(list.data().get().origin() == Origin.CLIENT, "player list must be client cache");
-      CapturedPacket joined = capture.await(context, p -> hasKind(p, Kind.PLAYER_JOINED));
-      require(joined.data().get().player().isPresent(), "join event must carry the player");
+      CapturedPacket list = capture.await(context, p -> hasType(p, PlayerListEvent.class));
+      require(list.event().get().origin() == Origin.CLIENT, "player list must be client cache");
+      CapturedPacket joined = capture.await(context, p -> hasType(p, PlayerJoinedEvent.class));
+      require(joined.event().get().player().isPresent(), "join event must carry the player");
 
       context.runOnClient(client -> client.getConnection().sendChat("hello-cache"));
       CapturedPacket chat =
-          capture.await(context, p -> hasContent(p, Kind.CHAT_SENT, "hello-cache"));
-      require(chat.data().get().origin() == Origin.CLIENT, "chat must be client cache data");
+          capture.await(context, p -> hasContent(p, ChatSentEvent.class, "hello-cache"));
+      require(chat.event().get().origin() == Origin.CLIENT, "chat must be client cache data");
 
       context.runOnClient(client -> client.getConnection().sendCommand("time set day"));
       CapturedPacket command =
-          capture.await(context, p -> hasContent(p, Kind.COMMAND_SENT, "time set day"));
-      require(command.data().get().origin() == Origin.CLIENT, "command must be client cache data");
+          capture.await(context, p -> hasContent(p, CommandSentEvent.class, "time set day"));
+      require(
+          command.event().get().origin() == Origin.CLIENT, "command must be client cache data");
 
-      capture.send(appPacket(Kind.CHAT_SENT, "from-app"));
-      capture.await(context, p -> hasContent(p, Kind.CHAT_SENT, "from-app"));
+      capture.send(appPacket("from-app"));
+      capture.await(context, p -> hasContent(p, ChatSentEvent.class, "from-app"));
 
       capture.clear();
     }
@@ -94,49 +101,50 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
       server.runCommand("time set night");
       context.waitTicks(40);
       require(
-          capture.packets().stream().noneMatch(p -> hasKind(p, Kind.COMMAND_EXECUTED)),
+          capture.packets().stream().noneMatch(p -> hasType(p, CommandExecutedEvent.class)),
           "commands executed on the server must never reach the client capture");
 
       server.runCommand("say from-server");
       CapturedPacket said = capture.await(context, p -> contentContains(p, "from-server"));
       require(said.authority() == Origin.SERVER, "server data must carry server authority");
-      require(said.data().get().origin() == Origin.SERVER, "server data must not be a cache");
+      require(said.event().get().origin() == Origin.SERVER, "server data must not be a cache");
 
       context.runOnClient(client -> client.getConnection().sendChat("hello-server"));
       CapturedPacket chat =
-          capture.await(context, p -> hasContent(p, Kind.CHAT_RECEIVED, "hello-server"));
-      require(chat.data().get().origin() == Origin.SERVER, "chat must come from the server");
+          capture.await(context, p -> hasContent(p, ChatReceivedEvent.class, "hello-server"));
+      require(chat.event().get().origin() == Origin.SERVER, "chat must come from the server");
 
       context.waitTicks(20);
       boolean cacheLeaked =
           capture.packets().stream()
               .anyMatch(p ->
                   p.type() == CapturedPacket.Type.EVENT
-                      && p.data().get().origin() == Origin.CLIENT);
+                      && p.event().get().origin() == Origin.CLIENT);
       require(!cacheLeaked, "client cache must not be delivered while the server is the truth");
     }
   }
 
-  private static CapturedPacket appPacket(Kind kind, String content) {
+  private static CapturedPacket appPacket(String content) {
     return CapturedPacket.event(
         Origin.CLIENT,
         WorldData.empty("", ""),
-        CapturedData.of(Origin.CLIENT, kind, null, content));
+        new ChatSentEvent(null, Origin.CLIENT, null, content));
   }
 
-  private static boolean hasKind(CapturedPacket packet, Kind kind) {
-    return packet.type() == CapturedPacket.Type.EVENT && packet.data().get().kind() == kind;
+  private static boolean hasType(CapturedPacket packet, Class<? extends CapturedEvent> type) {
+    return packet.type() == CapturedPacket.Type.EVENT && type.isInstance(packet.event().get());
   }
 
-  private static boolean hasContent(CapturedPacket packet, Kind kind, String content) {
-    return packet.type() == CapturedPacket.Type.EVENT
-        && packet.data().get().kind() == kind
-        && packet.data().get().content().equals(Optional.of(content));
+  private static boolean hasContent(
+      CapturedPacket packet, Class<? extends MessageEvent> type, String content) {
+    return hasType(packet, type)
+        && ((MessageEvent) packet.event().get()).content().equals(Optional.of(content));
   }
 
   private static boolean contentContains(CapturedPacket packet, String text) {
     return packet.type() == CapturedPacket.Type.EVENT
-        && packet.data().get().content().map(c -> c.contains(text)).orElse(false);
+        && packet.event().get() instanceof MessageEvent message
+        && message.content().map(c -> c.contains(text)).orElse(false);
   }
 
   private static void require(boolean condition, String message) {

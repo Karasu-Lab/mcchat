@@ -47,7 +47,8 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { threadRepository.removeClient(clientId) }
     }
 
-    fun onThreadSelected(threadId: String) = _uiState.update { it.copy(selectedThreadId = threadId) }
+    fun onThreadSelected(threadId: String) =
+        _uiState.update { it.copy(selectedThreadId = threadId) }
 
     fun onPinToggle(thread: ChatThread) {
         val category = if (thread.isPinned) ThreadCategory.Recent else ThreadCategory.Pinned
@@ -58,6 +59,11 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
 private fun List<ChatThread>.toSections(): List<DrawerSection> {
     val byCategory = groupBy { it.category }
     return ThreadCategory.entries.mapNotNull { category ->
-        byCategory[category]?.let { DrawerSection(category, it.sortedByDescending(ChatThread::createdAtMillis)) }
+        byCategory[category]?.let {
+            DrawerSection(
+                category,
+                it.sortedByDescending(ChatThread::createdAtMillis)
+            )
+        }
     }
 }

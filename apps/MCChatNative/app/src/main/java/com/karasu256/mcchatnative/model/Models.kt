@@ -9,6 +9,7 @@ data class Client(
     val name: String,
     val address: String,
     val isOnline: Boolean,
+    val icon: ByteArray? = null,
 )
 
 @Serializable
@@ -103,11 +104,13 @@ sealed interface ChatEvent {
         val isReply: Boolean = false,
         val timestampMillis: Long = System.currentTimeMillis(),
     ) : ChatEvent
+
     data class WorldChanged(
         val id: Long,
         val world: World,
         val timestampMillis: Long,
     ) : ChatEvent
+
     data class Typing(val user: User, val isTyping: Boolean) : ChatEvent
     data class Reaction(val intent: ReactionIntent) : ChatEvent
 }

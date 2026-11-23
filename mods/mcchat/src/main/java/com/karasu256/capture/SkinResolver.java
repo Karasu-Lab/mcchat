@@ -1,7 +1,7 @@
 package com.karasu256.capture;
 
-import com.karasu256.mcchat.common.CapturedData;
 import com.karasu256.mcchat.common.PlayerRef;
+import com.karasu256.mcchat.common.event.CapturedEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,22 +17,8 @@ public final class SkinResolver {
     PNGS.put(uuid, png);
   }
 
-  public static CapturedData attach(CapturedData data) {
-    switch (data.kind()) {
-      case PLAYER_LIST:
-      case PLAYER_JOINED:
-      case PLAYER_LEFT:
-        return new CapturedData(
-            data.id(),
-            data.timestampMillis(),
-            data.origin(),
-            data.kind(),
-            data.player().map(SkinResolver::attachSkin),
-            data.content(),
-            attachAll(data.players()));
-      default:
-        return data;
-    }
+  public static CapturedEvent attach(CapturedEvent event) {
+    return event.mapPlayers(SkinResolver::attachSkin);
   }
 
   public static List<PlayerRef> attachAll(List<PlayerRef> refs) {
