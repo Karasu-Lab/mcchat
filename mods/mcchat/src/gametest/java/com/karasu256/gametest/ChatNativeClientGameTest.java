@@ -65,8 +65,7 @@ public class ChatNativeClientGameTest implements FabricClientGameTest {
       context.runOnClient(client -> client.getConnection().sendCommand("time set day"));
       CapturedPacket command =
           capture.await(context, p -> hasContent(p, CommandSentEvent.class, "time set day"));
-      require(
-          command.event().get().origin() == Origin.CLIENT, "command must be client cache data");
+      require(command.event().get().origin() == Origin.CLIENT, "command must be client cache data");
 
       capture.send(appPacket("from-app"));
       capture.await(context, p -> hasContent(p, ChatSentEvent.class, "from-app"));
